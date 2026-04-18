@@ -1,0 +1,83 @@
+version: "3.9"
+
+services:
+  # ─────────────────────────────────────────
+  # Base de datos PostgreSQL
+  # ─────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: inari-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-inari}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-inari_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-eventos_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inari} -d ${POSTGRES_DB:-eventos_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─────────────────────────────────────────
+  # Backend FastAPI
+  # ─────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inari-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-inari}:${POSTGRES_PASSWORD:-inari_dev}@db:5432/${POSTGRES_DB:-eventos_db}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SECRET_KEY: ${SECRET_KEY:-cambiar-en-produccion-usar-32chars-minimo}
+      STORAGE_BACKEND: local
+      STORAGE_BASE_URL: http://localhost:3000
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      OPTIMIZER_ILP_MAX_COMBINATIONS: "500"
+      PREMIUM_BUDGET_MULTIPLIER: "1.30"
+      VISION_MODEL: ${VISION_MODEL:-gemini-2.5-flash-lite}
+      DEBUG: "false"
+    volumes:
+      - storage_uploads:/app/storage/uploads
+    ports:
+      - "8000:8000"
+    # Migrations + seed al arrancar, luego servidor
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m scripts.seed &&
+             uvicorn backend.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # Frontend React → Nginx
+  # VITE_API_URL como build arg: Nginx hace proxy de /api → backend:8000
+  # ─────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: inari-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+    driver: local
+  storage_uploads:
+    driver: local

@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-50 text-gray-900 font-sans antialiased;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Better focus outlines */
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent-500;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+@layer components {
+  /* ── Buttons ── */
+  .btn-primary {
+    @apply bg-accent-500 hover:bg-accent-600 active:bg-accent-700 text-white
+           font-semibold px-6 py-2.5 rounded-xl
+           transition-all duration-200 ease-out
+           disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-sm hover:shadow-md hover:shadow-accent-500/10
+           active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply bg-white hover:bg-surface-100 text-gray-700 font-semibold px-6 py-2.5 rounded-xl
+           border border-gray-200 hover:border-gray-300
+           transition-all duration-200 ease-out
+           active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply text-gray-500 hover:text-gray-700 hover:bg-surface-100
+           font-medium px-4 py-2 rounded-xl
+           transition-all duration-200;
+  }
+
+  /* ── Cards ── */
+  .card {
+    @apply bg-white rounded-2xl shadow-soft border border-gray-100/80 p-6
+           transition-shadow duration-300;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-soft-lg hover:border-gray-200;
+  }
+
+  .card-interactive {
+    @apply card-hover cursor-pointer active:scale-[0.99] transition-all duration-200;
+  }
+
+  /* ── Form elements ── */
+  .input-field {
+    @apply w-full rounded-xl border border-gray-200 px-4 py-3 text-sm
+           bg-white placeholder:text-gray-400
+           focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500
+           transition-all duration-200
+           hover:border-gray-300;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-600 mb-2;
+  }
+
+  /* ── Badges ── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold;
+  }
+
+  .badge-success {
+    @apply badge bg-emerald-50 text-emerald-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-amber-50 text-amber-700;
+  }
+
+  .badge-error {
+    @apply badge bg-red-50 text-red-700;
+  }
+
+  .badge-info {
+    @apply badge bg-blue-50 text-blue-700;
+  }
+
+  .badge-premium {
+    @apply badge bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-800
+           border border-amber-200/50;
+  }
+
+  /* ── Section title pattern ── */
+  .section-title {
+    @apply text-2xl font-bold text-gray-900 tracking-tight;
+  }
+
+  .section-subtitle {
+    @apply text-gray-500 mt-1 text-sm;
+  }
+}

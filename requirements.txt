@@ -1,0 +1,38 @@
+# Backend — Python dependencies (producción)
+# Dev/test: ver requirements-dev.txt
+
+# Framework web
+fastapi==0.115.0
+uvicorn[standard]==0.44.0
+
+# Base de datos
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.29.0
+alembic==1.13.3
+
+# Validación y configuración
+pydantic==2.9.2
+pydantic-settings==2.5.2
+email-validator==2.3.0
+
+# Autenticación
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+
+# Google Gemini (análisis visual)
+google-genai==1.73.1
+
+# HTTP client (google-genai requiere >=0.28.1)
+httpx>=0.28.1,<1.0.0
+
+# Optimización
+PuLP==2.9.0
+
+# PDF
+weasyprint==61.2
+pydyf==0.8.0
+jinja2==3.1.4
+
+# Forms / multipart
+python-multipart==0.0.12
