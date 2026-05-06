@@ -82,9 +82,12 @@ def generate_proposals(
             evento_tipo, evento_fecha, num_invitados, estilo, cliente_nombre, version,
         )
 
-    # Premium: presupuesto extendido al 130%
+    # Premium: presupuesto extendido + modo calidad absoluta
     premium_input = base_input.model_copy(
-        update={"budget": base_input.budget * settings.PREMIUM_BUDGET_MULTIPLIER}
+        update={
+            "budget": base_input.budget * settings.PREMIUM_BUDGET_MULTIPLIER,
+            "optimization_mode": "premium",
+        }
     )
     result_premium = optimize(premium_input)
     premium = None

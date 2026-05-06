@@ -44,6 +44,16 @@ def run_greedy(inp: OptimizationInput) -> OptimizationResult:
     selected: list[SelectedProvider] = []
     remaining_budget = inp.budget
 
+    is_premium = inp.optimization_mode == "premium"
+    qw = inp.quality_weight  # 1.0 por defecto — no cambia comportamiento base
+
+    def _select_key(p):
+        if is_premium:
+            # Calidad absoluta amplificada por quality_weight del estilo
+            return p.quality_index * qw
+        # Ratio eficiencia: calidad ponderada / costo
+        return (p.quality_index * qw) / p.costo
+
     # Paso 1: servicios obligatorios — deben cubrirse o infeasible
     for service_id in inp.required_services:
         candidates = eligible.get(service_id, [])
@@ -58,22 +68,39 @@ def run_greedy(inp: OptimizationInput) -> OptimizationResult:
                 reason=f"No hay proveedores elegibles para servicio obligatorio {service_id}",
             )
 
-        # Ordenar por ratio quality/costo descendente (máxima calidad por sol)
-        best = max(candidates, key=lambda p: p.quality_index / p.costo)
-
-        if best.costo > remaining_budget:
-            return OptimizationResult(
-                selected_providers=[],
-                total_cost=0.0,
-                quality_score=0.0,
-                algorithm_used="GREEDY",
-                feasible=False,
-                execution_ms=0,
-                reason=(
-                    f"Presupuesto insuficiente para servicio obligatorio '{best.service_name}' "
-                    f"(costo: {best.costo:.2f}, restante: {remaining_budget:.2f})"
-                ),
-            )
+        # Premium: filtra los que entran en el presupuesto restante y elige el de mayor calidad
+        # Balanced: elige el de mejor ratio calidad/costo
+        if is_premium:
+            affordable = [p for p in candidates if p.costo <= remaining_budget]
+            if not affordable:
+                return OptimizationResult(
+                    selected_providers=[],
+                    total_cost=0.0,
+                    quality_score=0.0,
+                    algorithm_used="GREEDY",
+                    feasible=False,
+                    execution_ms=0,
+                    reason=(
+                        f"Presupuesto insuficiente para servicio obligatorio '{service_id}' "
+                        f"(restante: {remaining_budget:.2f})"
+                    ),
+                )
+            best = max(affordable, key=_select_key)
+        else:
+            best = max(candidates, key=_select_key)
+            if best.costo > remaining_budget:
+                return OptimizationResult(
+                    selected_providers=[],
+                    total_cost=0.0,
+                    quality_score=0.0,
+                    algorithm_used="GREEDY",
+                    feasible=False,
+                    execution_ms=0,
+                    reason=(
+                        f"Presupuesto insuficiente para servicio obligatorio '{best.service_name}' "
+                        f"(costo: {best.costo:.2f}, restante: {remaining_budget:.2f})"
+                    ),
+                )
 
         selected.append(
             SelectedProvider(
@@ -93,7 +120,7 @@ def run_greedy(inp: OptimizationInput) -> OptimizationResult:
         candidates = eligible.get(service_id, [])
         if not candidates:
             continue
-        best = max(candidates, key=lambda p: p.quality_index / p.costo)
+        best = max(candidates, key=_select_key)
         if best.costo <= remaining_budget:
             selected.append(
                 SelectedProvider(

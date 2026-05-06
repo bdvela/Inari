@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inari Group — UI System</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    html, body, #root { height: 100%; }
+    /* keep design canvas bg matching brand parchment */
+    .dc-canvas-bg { background: #ECE7DD !important; }
+    .screen-frame {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      overflow: auto;
+    }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="icons.jsx"></script>
+  <script type="text/babel" src="screens/landing.jsx"></script>
+  <script type="text/babel" src="screens/login.jsx"></script>
+  <script type="text/babel" src="screens/dashboard.jsx"></script>
+  <script type="text/babel" src="screens/wizard.jsx"></script>
+  <script type="text/babel" src="screens/result.jsx"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const { DesignCanvas, DCSection, DCArtboard } = window;
+    const { IG_Landing, IG_Login, IG_Dashboard, IG_Wizard, IG_Result } = window;
+
+    function ScreenWrap({ children }) {
+      return <div className="screen-frame">{children}</div>;
+    }
+
+    function App() {
+      return (
+        <DesignCanvas
+          title="Inari Group — Liquid Glass, Lima Edition"
+          subtitle="Sistema completo · 5 pantallas · Eventos premium"
+        >
+          <DCSection
+            id="marketing"
+            title="01 · Marketing"
+            subtitle="Punto de entrada público — captura cotizaciones"
+          >
+            <DCArtboard id="landing" label="Landing · Eventos que trascienden" width={1280} height={2400}>
+              <ScreenWrap><IG_Landing /></ScreenWrap>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="auth"
+            title="02 · Acceso"
+            subtitle="Login interno para el equipo Inari"
+          >
+            <DCArtboard id="login" label="Login · Split warm/dark" width={1280} height={900}>
+              <ScreenWrap><IG_Login /></ScreenWrap>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="app"
+            title="03 · Aplicación interna"
+            subtitle="Dashboard, wizard y resultado de cotización"
+          >
+            <DCArtboard id="dashboard" label="Dashboard · Cotizaciones" width={1440} height={1080}>
+              <ScreenWrap><IG_Dashboard /></ScreenWrap>
+            </DCArtboard>
+            <DCArtboard id="wizard" label="Nueva Cotización · Wizard 3 pasos" width={1100} height={1080}>
+              <ScreenWrap><IG_Wizard /></ScreenWrap>
+            </DCArtboard>
+            <DCArtboard id="result" label="Resultado · Básica vs Premium" width={1280} height={1700}>
+              <ScreenWrap><IG_Result /></ScreenWrap>
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

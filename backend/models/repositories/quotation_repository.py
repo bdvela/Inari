@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.models.models import Quotation, QuotationDetail, OptimizationLog, QuotationStatus
+from backend.models.models import Quotation, QuotationDetail, OptimizationLog
 
 
 class QuotationRepository:
@@ -56,26 +56,6 @@ class QuotationRepository:
         self._session.add(quotation)
         await self._session.flush()
         return quotation
-
-    async def update_status(
-        self,
-        quotation_id: int,
-        status: QuotationStatus,
-        costo_total: float | None = None,
-        quality_score: float | None = None,
-        pdf_url: str | None = None,
-    ) -> None:
-        quotation = await self.get_by_id(quotation_id)
-        if not quotation:
-            return
-        quotation.estado = status
-        if costo_total is not None:
-            quotation.costo_total = costo_total
-        if quality_score is not None:
-            quotation.quality_score = quality_score
-        if pdf_url is not None:
-            quotation.pdf_url = pdf_url
-        await self._session.flush()
 
     async def save_log(self, log: OptimizationLog) -> None:
         self._session.add(log)

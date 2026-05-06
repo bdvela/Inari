@@ -6,16 +6,21 @@ import axios from 'axios'
 import type {
   AlternativeProvider,
   AuthToken,
+  BusinessRule,
   DashboardStats,
+  EventTypeOption,
   GenerateQuotationResult,
+  ParsedDescription,
   Provider,
   Quotation,
   QuotationPair,
   QuotationSummary,
   ReprocessRequest,
+  ServiceOption,
+  ServicePackageModel,
 } from '../types'
 
-const API_BASE = import.meta.env.VITE_API_URL ?? '/api/v1'
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
 
 const http = axios.create({ baseURL: API_BASE })
 
@@ -59,6 +64,9 @@ export const quotationsApi = {
   list: () =>
     http.get<QuotationSummary[]>('/quotations/').then((r) => r.data),
 
+  parseDescription: (description: string) =>
+    http.post<ParsedDescription>('/quotations/parse-description', { description }).then((r) => r.data),
+
   generate: (formData: FormData) =>
     http.post<GenerateQuotationResult>('/quotations/generate', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -89,13 +97,60 @@ export const quotationsApi = {
     const response = await http.get(`/quotations/${id}/pdf`, {
       responseType: 'blob',
     })
+    const contentType: string = response.headers['content-type'] ?? ''
     const url = URL.createObjectURL(response.data)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `propuesta_${id}.pdf`
-    a.click()
-    URL.revokeObjectURL(url)
+
+    if (contentType.includes('text/html')) {
+      // Dev Mac: WeasyPrint no disponible → abrir HTML en tab para imprimir (Cmd+P)
+      window.open(url, '_blank')
+    } else {
+      // Producción: descargar PDF real
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `propuesta_${id}.pdf`
+      a.click()
+    }
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
   },
+}
+
+// Reglas de negocio
+export const rulesApi = {
+  list: () => http.get<BusinessRule[]>('/rules/').then((r) => r.data),
+
+  listServices: () => http.get<ServiceOption[]>('/rules/services/').then((r) => r.data),
+
+  listEventTypes: () => http.get<EventTypeOption[]>('/rules/event-types/').then((r) => r.data),
+
+  create: (data: {
+    tipo_evento: string
+    servicio_id: number
+    es_obligatorio: boolean
+    condicion: Record<string, unknown> | null
+    descripcion: string | null
+  }) => http.post<BusinessRule>('/rules/', data).then((r) => r.data),
+
+  update: (id: number, data: {
+    es_obligatorio?: boolean
+    condicion?: Record<string, unknown> | null
+    descripcion?: string | null
+  }) => http.put<BusinessRule>(`/rules/${id}`, data).then((r) => r.data),
+
+  delete: (id: number) => http.delete(`/rules/${id}`),
+}
+
+// Paquetes de servicios propios
+export const packagesApi = {
+  list: () => http.get<ServicePackageModel[]>('/packages/').then((r) => r.data),
+
+  create: (data: Omit<ServicePackageModel, 'id' | 'is_active'>) =>
+    http.post<ServicePackageModel>('/packages/', data).then((r) => r.data),
+
+  update: (id: number, data: Partial<ServicePackageModel>) =>
+    http.put<ServicePackageModel>(`/packages/${id}`, data).then((r) => r.data),
+
+  delete: (id: number) => http.delete(`/packages/${id}`),
 }
 
 // Proveedores

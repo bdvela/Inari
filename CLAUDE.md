@@ -4,6 +4,19 @@ Contexto para Claude Code. Lee antes de tocar código.
 
 ---
 
+## Skills activas
+
+Leer y aplicar antes de escribir tests o servicios TypeScript/Python:
+
+- **`.agents/skills/tdd`** — Disciplina Red-Green-Refactor. Al escribir cualquier test: 1 test → falla → fix mínimo → pasa → refactor. Sin "splurge" de múltiples tests a la vez.
+- **`.agents/skills/typed-service-contracts`** — Patrón Spec + Handler con Zod. Al crear servicios TypeScript: schema Zod primero (parseado, no solo validación), resultado como discriminated union `{ success: true, data } | { success: false, error }`, handler nunca lanza excepciones.
+
+Sistema de diseño visual:
+
+- **`DESIGN.md`** — Tokens de diseño "Fiesta Seria". Al tocar frontend: usar solo colores, tipografía y radios definidos ahí. Lint con `npm run design:lint` desde `frontend/`.
+
+---
+
 ## ¿Qué es este proyecto?
 
 Plataforma web para empresa peruana de eventos (RUC 20) que automatiza cotizaciones desde imágenes de referencia de clientes.

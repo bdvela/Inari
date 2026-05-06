@@ -47,46 +47,73 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left panel — branding */}
-      <div className="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_rgba(233,69,96,0.15),_transparent_60%)]" />
-        <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-accent-500 rounded-lg flex items-center justify-center shadow-glow">
-              <span className="text-white font-black text-sm">I</span>
+
+      {/* ── Panel izquierdo — decorativo oscuro ── */}
+      <div className="hidden lg:flex lg:w-[45%] bg-bg relative overflow-hidden flex-col">
+        {/* Círculo difuso dorado */}
+        <div
+          className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)', filter: 'blur(60px)' }}
+        />
+
+        <div className="relative z-10 flex flex-col justify-between p-12 h-full">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <span
+              className="font-display text-2xl font-bold text-accent"
+              style={{ textShadow: '0 0 20px rgba(201,168,76,0.4)' }}
+            >
+              IG
+            </span>
+            <div className="leading-none">
+              <div className="font-display font-bold tracking-widest text-white text-sm">INARI</div>
+              <div className="text-[9px] tracking-[0.3em] text-accent/60 uppercase">GROUP</div>
             </div>
-            <span className="text-white font-bold text-lg">Inari Group</span>
           </div>
 
+          {/* Contenido central */}
           <div>
-            <h2 className="text-4xl font-extrabold text-white leading-tight mb-4">
-              Únete y organiza<br />
-              <span className="text-accent-400">eventos memorables</span>
+            <p className="text-accent/70 text-xs uppercase tracking-widest font-semibold mb-3">
+              Cotización inteligente
+            </p>
+            <h2 className="font-display text-4xl font-bold text-white leading-tight mb-5">
+              Tu evento,<br />
+              <span className="text-accent">perfecto</span>
             </h2>
-            <p className="text-white/60 text-base max-w-md leading-relaxed">
-              Crea tu cuenta para acceder al cotizador inteligente y gestionar tus eventos desde un solo lugar.
+            <p className="text-white/40 text-sm leading-relaxed max-w-xs">
+              Sube una imagen de referencia y recibe en menos de 3 minutos una propuesta básica y premium
+              optimizada por inteligencia artificial para tu presupuesto.
             </p>
           </div>
 
-          <p className="text-white/30 text-xs">
-            Inari Group · Lima, Perú · 2026
-          </p>
+          {/* Micro-stats */}
+          <div className="flex items-center gap-3 text-white/25 text-xs">
+            <span>+500 eventos</span>
+            <span className="text-accent/30">·</span>
+            <span>8 años</span>
+            <span className="text-accent/30">·</span>
+            <span>Lima, Perú</span>
+          </div>
         </div>
       </div>
 
-      {/* Right panel — form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-surface-50">
-        <div className="w-full max-w-[400px] animate-fade-in">
-          {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-10">
-            <div className="w-12 h-12 bg-accent-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-glow">
-              <span className="text-white font-black text-lg">I</span>
+      {/* ── Panel derecho — formulario claro ── */}
+      <div className="flex-1 flex items-center justify-center p-6 bg-bg">
+        <div className="bg-surface border border-border rounded-2xl shadow-lg p-8 max-w-[420px] w-full animate-fade-in">
+          {/* Logo mobile */}
+          <div className="lg:hidden flex items-center gap-2 mb-8">
+            <span className="font-display text-xl font-bold text-accent">IG</span>
+            <div className="leading-none">
+              <div className="font-display font-bold tracking-widest text-text-primary text-xs">INARI</div>
+              <div className="text-[8px] tracking-[0.3em] text-accent/60 uppercase">GROUP</div>
             </div>
-            <h1 className="text-xl font-bold text-gray-900">Inari Group</h1>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">Crear cuenta</h2>
-          <p className="text-gray-500 text-sm mb-8">Completa tus datos para comenzar</p>
+          <p className="text-accent/70 text-[10px] uppercase tracking-widest font-semibold mb-1">
+            Crear cuenta
+          </p>
+          <h2 className="font-display text-2xl font-bold text-text-primary mb-1">Únete a Inari</h2>
+          <p className="text-text-secondary text-sm mb-8">Completa tus datos para comenzar</p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
@@ -97,7 +124,9 @@ export default function RegisterPage() {
                 className="input-field"
                 placeholder="Tu nombre"
               />
-              {errors.nombre && <p className="text-red-500 text-xs mt-1.5">{errors.nombre.message}</p>}
+              {errors.nombre && (
+                <p className="text-danger text-xs mt-1.5">{errors.nombre.message}</p>
+              )}
             </div>
 
             <div>
@@ -108,7 +137,9 @@ export default function RegisterPage() {
                 className="input-field"
                 placeholder="tu@email.com"
               />
-              {errors.email && <p className="text-red-500 text-xs mt-1.5">{errors.email.message}</p>}
+              {errors.email && (
+                <p className="text-danger text-xs mt-1.5">{errors.email.message}</p>
+              )}
             </div>
 
             <div>
@@ -130,7 +161,9 @@ export default function RegisterPage() {
                   className="input-field"
                   placeholder="Mín. 6 caracteres"
                 />
-                {errors.password && <p className="text-red-500 text-xs mt-1.5">{errors.password.message}</p>}
+                {errors.password && (
+                  <p className="text-danger text-xs mt-1.5">{errors.password.message}</p>
+                )}
               </div>
               <div>
                 <label className="label">Confirmar</label>
@@ -141,19 +174,23 @@ export default function RegisterPage() {
                   placeholder="Repetir"
                 />
                 {errors.confirmPassword && (
-                  <p className="text-red-500 text-xs mt-1.5">{errors.confirmPassword.message}</p>
+                  <p className="text-danger text-xs mt-1.5">{errors.confirmPassword.message}</p>
                 )}
               </div>
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 bg-red-50 text-red-700 text-sm p-3 rounded-xl border border-red-100">
-                <AlertCircle size={16} className="flex-shrink-0" />
+              <div className="flex items-center gap-2 bg-red-50 border border-red-100 text-red-600 rounded-xl p-3 text-sm">
+                <AlertCircle size={15} className="flex-shrink-0" />
                 {error}
               </div>
             )}
 
-            <button type="submit" disabled={isSubmitting} className="btn-primary w-full flex items-center justify-center gap-2">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-primary w-full flex items-center justify-center gap-2 py-3"
+            >
               {isSubmitting ? (
                 <span className="animate-pulse-soft">Creando cuenta...</span>
               ) : (
@@ -165,16 +202,20 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-            <p className="text-sm text-gray-500">
+          <div className="mt-8 pt-6 border-t border-border text-center">
+            <p className="text-sm text-text-secondary">
               ¿Ya tienes cuenta?{' '}
-              <Link to="/login" className="text-accent-500 font-semibold hover:text-accent-600 transition-colors">
+              <Link
+                to="/login"
+                className="text-accent font-semibold hover:text-accent transition-colors"
+              >
                 Inicia sesión
               </Link>
             </p>
           </div>
         </div>
       </div>
+
     </div>
   )
 }

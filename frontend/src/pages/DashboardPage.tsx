@@ -1,237 +1,378 @@
-/**
- * Panel ejecutivo — lista de cotizaciones del usuario con métricas.
- */
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  PlusCircle, FileText, Loader2, AlertCircle, TrendingUp,
-  CheckCircle, Clock, BarChart2, Star, ArrowUpRight,
+  PlusCircle, AlertCircle, CheckCircle, Clock,
+  BarChart2, Star, TrendingUp, Search, ArrowUpRight,
+  Lock,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { quotationsApi } from '../services/api'
 import type { QuotationSummary } from '../types'
+import QualityBar from '../components/shared/QualityBar'
+
+// ── Sub-components ─────────────────────────────────────────────
 
 function StatusBadge({ estado }: { estado: QuotationSummary['estado'] }) {
   const config = {
-    completado: { style: 'badge-success', icon: <CheckCircle size={12} />, label: 'Completado' },
-    procesando: { style: 'badge-warning', icon: <Clock size={12} />, label: 'Procesando' },
-    error: { style: 'badge-error', icon: <AlertCircle size={12} />, label: 'Error' },
+    completado: { cls: 'badge-success', icon: <CheckCircle size={11} />, label: 'Completado' },
+    procesando: { cls: 'badge-warning', icon: <Clock size={11} />,        label: 'Procesando' },
+    error:      { cls: 'badge-error',   icon: <AlertCircle size={11} />,  label: 'Error'      },
   }
   const c = config[estado]
-  return (
-    <span className={c.style}>
-      {c.icon}
-      {c.label}
-    </span>
-  )
+  return <span className={`badge ${c.cls}`}>{c.icon}{c.label}</span>
 }
 
 function LevelBadge({ nivel }: { nivel: QuotationSummary['nivel'] }) {
-  return nivel === 'premium' ? (
-    <span className="badge-premium">Premium</span>
-  ) : (
-    <span className="badge bg-gray-50 text-gray-600 border border-gray-200/50">Básica</span>
+  return nivel === 'premium'
+    ? <span className="badge badge-accent">Premium</span>
+    : <span className="badge badge-neutral">Básica</span>
+}
+
+function EventLabel({ tipo }: { tipo: string }) {
+  const labels: Record<string, string> = {
+    boda: 'Boda', corporativo: 'Corporativo', cumpleanos: 'Cumpleaños',
+    quinceanos: 'Quinceañera', conferencia: 'Conferencia', otro: 'Otro',
+  }
+  return <span style={{ fontSize: 14, color: '#6E6E73' }}>{labels[tipo] ?? tipo}</span>
+}
+
+function StatCard({
+  label, value, suffix, icon: Icon, accent = false,
+}: {
+  label: string; value: string | number; suffix?: string
+  icon: React.ElementType; accent?: boolean
+}) {
+  return (
+    <div className="glass card-hover" style={{ padding: 24, position: 'relative', minHeight: 132 }}>
+      <div style={{
+        position: 'absolute', top: 18, right: 18,
+        width: 38, height: 38, borderRadius: 10,
+        background: accent ? 'rgba(232,87,42,0.10)' : 'rgba(26,23,20,0.05)',
+        color: accent ? '#E8572A' : '#6E6E73',
+        border: `1px solid ${accent ? 'rgba(232,87,42,0.18)' : 'rgba(26,23,20,0.08)'}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Icon size={18} />
+      </div>
+      <div style={{
+        fontSize: 12, color: '#6E6E73', fontWeight: 500,
+        letterSpacing: '0.04em', textTransform: 'uppercase' as const,
+      }}>
+        {label}
+      </div>
+      <div style={{ marginTop: 14, display: 'flex', alignItems: 'baseline', gap: 4 }}>
+        <span style={{
+          fontFamily: 'Syne, sans-serif', fontSize: 44,
+          fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, color: '#1D1D1F',
+        }}>
+          {value}
+        </span>
+        {suffix && (
+          <span style={{ fontSize: 14, color: '#AEAEB2', fontWeight: 500 }}>{suffix}</span>
+        )}
+      </div>
+    </div>
   )
 }
 
-function EventTypeBadge({ tipo }: { tipo: string }) {
-  const labels: Record<string, string> = {
-    boda: 'Boda',
-    corporativo: 'Corporativo',
-    cumpleanos: 'Cumpleaños',
-    quinceanos: 'Quinceañera',
-    conferencia: 'Conferencia',
-    otro: 'Otro',
-  }
-  return <span className="text-gray-500 text-sm">{labels[tipo] ?? tipo}</span>
-}
+// ── Page ──────────────────────────────────────────────────────
+
+const FILTERS = ['Todas', 'Boda', 'Corporativo', 'Quinceañera', 'Otros']
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { role, nombre } = useAuth()
+  const isStaff = role === 'ejecutivo' || role === 'admin'
 
-  const { data: quotations, isLoading, isError } = useQuery({
+  const [search, setSearch]         = useState('')
+  const [filterEstado, setFilterEstado] = useState<string>('')
+  const [activeFilter, setActiveFilter] = useState('Todas')
+
+  const { data: quotations, isLoading, isError, refetch } = useQuery({
     queryKey: ['quotations'],
-    queryFn: quotationsApi.list,
+    queryFn:  quotationsApi.list,
   })
 
   const { data: stats } = useQuery({
     queryKey: ['stats'],
-    queryFn: quotationsApi.getStats,
+    queryFn:  quotationsApi.getStats,
   })
 
+  const filtered = useMemo(() => {
+    if (!quotations) return []
+    return quotations.filter((q) => {
+      const matchSearch = !search ||
+        q.evento_nombre.toLowerCase().includes(search.toLowerCase()) ||
+        (isStaff && q.cliente_nombre?.toLowerCase().includes(search.toLowerCase()))
+      const matchEstado = !filterEstado || q.estado === filterEstado
+      return matchSearch && matchEstado
+    })
+  }, [quotations, search, filterEstado, isStaff])
+
+  const qualityPct = stats?.quality_score_promedio != null
+    ? stats.quality_score_promedio * 100
+    : 0
+
+  const firstName = nombre ? nombre.split(' ')[0] : 'equipo'
+
   return (
-    <div className="p-8 max-w-[1200px] mx-auto animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-10">
+    <div className="mesh" style={{ minHeight: '100vh', padding: '40px 48px 64px' }}>
+      <div className="mesh-blob" />
+
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 36 }}>
         <div>
-          <h1 className="section-title text-[28px]">
-            {nombre ? `Hola, ${nombre.split(' ')[0]}` : 'Dashboard'}
+          <div style={{
+            fontSize: 12, color: '#E8572A', fontWeight: 600,
+            letterSpacing: '0.14em', textTransform: 'uppercase' as const, marginBottom: 10,
+          }}>
+            {isStaff ? `Panel ${role}` : 'Mi panel'}
+          </div>
+          <h1 style={{
+            fontFamily: 'Syne, sans-serif', fontSize: 44, fontWeight: 800,
+            margin: 0, letterSpacing: '-0.03em', lineHeight: 1, color: '#1D1D1F',
+          }}>
+            Hola, {firstName}.
           </h1>
-          <p className="section-subtitle mt-1">
-            {role === 'admin' ? 'Vista administrador · todas las cotizaciones' : 'Gestión de cotizaciones y propuestas'}
+          <p style={{ marginTop: 10, fontSize: 15, color: '#6E6E73' }}>
+            {isStaff ? 'Todas las cotizaciones del sistema' : 'Gestión de cotizaciones y propuestas'}
           </p>
         </div>
-        <button
-          onClick={() => navigate('/quotations/new')}
-          className="btn-primary flex items-center gap-2"
-        >
-          <PlusCircle size={18} />
-          Nueva cotización
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {role !== 'admin' && (
+            <button className="btn btn-primary" onClick={() => navigate('/quotations/new')}>
+              <PlusCircle size={15} /> Nueva cotización
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-4 gap-5 mb-10">
-          {[
-            {
-              icon: BarChart2,
-              value: stats.total,
-              label: 'Total cotizaciones',
-              iconBg: 'bg-blue-50',
-              iconColor: 'text-blue-500',
-            },
-            {
-              icon: CheckCircle,
-              value: stats.completadas,
-              label: 'Completadas',
-              iconBg: 'bg-emerald-50',
-              iconColor: 'text-emerald-500',
-            },
-            {
-              icon: Star,
-              value: stats.quality_score_promedio != null
-                ? `${(stats.quality_score_promedio * 100).toFixed(0)}%`
-                : '—',
-              label: 'Calidad promedio',
-              iconBg: 'bg-amber-50',
-              iconColor: 'text-amber-500',
-            },
-            {
-              icon: TrendingUp,
-              value: stats.costo_promedio != null
-                ? `S/${(stats.costo_promedio / 1000).toFixed(1)}k`
-                : '—',
-              label: 'Costo promedio',
-              iconBg: 'bg-accent-50',
-              iconColor: 'text-accent-500',
-            },
-          ].map((s) => (
-            <div key={s.label} className="card py-5 px-5">
-              <div className="flex items-center gap-4">
-                <div className={`w-11 h-11 ${s.iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                  <s.icon className={s.iconColor} size={20} strokeWidth={1.8} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900 tracking-tight">{s.value}</p>
-                  <p className="text-xs text-gray-400 font-medium">{s.label}</p>
-                </div>
-              </div>
+      {/* ── Stats ── */}
+      {stats ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+          <StatCard label="Total cotizaciones" value={stats.total} icon={BarChart2} />
+          <StatCard label="Completadas" value={stats.completadas} suffix={`/ ${stats.total}`} icon={CheckCircle} />
+          <StatCard
+            label="Calidad promedio"
+            value={stats.quality_score_promedio != null ? `${qualityPct.toFixed(0)}%` : '—'}
+            icon={Star}
+            accent
+          />
+          <StatCard
+            label="Costo promedio"
+            value={stats.costo_promedio != null ? `S/${(stats.costo_promedio / 1000).toFixed(1)}k` : '—'}
+            icon={TrendingUp}
+          />
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} className="glass" style={{ padding: 24, height: 132 }}>
+              <div style={{ height: 12, borderRadius: 6, background: 'rgba(26,23,20,0.06)', width: '60%', marginBottom: 14 }} />
+              <div style={{ height: 40, borderRadius: 8, background: 'rgba(26,23,20,0.06)', width: '40%' }} />
             </div>
           ))}
         </div>
       )}
 
-      {/* Loading */}
+      {/* ── Loading ── */}
       {isLoading && (
-        <div className="card flex items-center justify-center py-24">
-          <div className="text-center">
-            <Loader2 className="animate-spin text-accent-500 mx-auto mb-3" size={32} />
-            <p className="text-sm text-gray-400">Cargando cotizaciones...</p>
-          </div>
+        <div className="glass" style={{ padding: 24 }}>
+          {[1,2,3,4,5].map(i => (
+            <div key={i} style={{ display: 'flex', gap: 16, padding: '14px 0', borderBottom: '1px solid rgba(26,23,20,0.04)' }}>
+              {[120,200,120,80,120,100,120].map((w, j) => (
+                <div key={j} style={{ height: 14, borderRadius: 4, background: 'rgba(26,23,20,0.06)', width: w }} />
+              ))}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Error */}
+      {/* ── Error ── */}
       {isError && (
-        <div className="card flex items-center gap-3 py-8 text-red-600">
-          <AlertCircle size={20} />
-          <span className="text-sm">Error al cargar cotizaciones. Intenta nuevamente.</span>
+        <div className="glass" style={{ padding: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
+          <AlertCircle size={20} style={{ color: '#FF3B30', flexShrink: 0 }} />
+          <p style={{ fontSize: 14, color: '#1D1D1F', flex: 1, margin: 0 }}>
+            No se pudieron cargar las cotizaciones.
+          </p>
+          <button className="btn btn-secondary btn-sm" onClick={() => refetch()}>Reintentar</button>
         </div>
       )}
 
-      {/* Empty state */}
+      {/* ── Empty ── */}
       {quotations && quotations.length === 0 && (
-        <div className="card text-center py-24">
-          <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <FileText className="text-gray-300" size={28} />
+        <div className="glass" style={{ padding: 64, textAlign: 'center' }}>
+          <div style={{ width: 64, height: 64, borderRadius: 16, background: 'rgba(232,87,42,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <BarChart2 size={28} style={{ color: '#E8572A' }} />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay cotizaciones aún</h3>
-          <p className="text-gray-400 text-sm mb-8 max-w-sm mx-auto">
-            Crea tu primera cotización subiendo una imagen de referencia o configurando tu evento
+          <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 26, fontWeight: 700, margin: '0 0 10px', letterSpacing: '-0.02em' }}>
+            No hay cotizaciones aún
+          </h3>
+          <p style={{ fontSize: 14, color: '#6E6E73', maxWidth: 360, margin: '0 auto 28px', lineHeight: 1.6 }}>
+            Crea tu primera cotización describiendo tu evento.
           </p>
-          <button
-            onClick={() => navigate('/quotations/new')}
-            className="btn-primary inline-flex items-center gap-2"
-          >
-            <PlusCircle size={18} />
-            Crear cotización
+          <button className="btn btn-primary" onClick={() => navigate('/quotations/new')}>
+            <PlusCircle size={15} /> Crear cotización
           </button>
         </div>
       )}
 
-      {/* Table */}
+      {/* ── Filtros + tabla ── */}
       {quotations && quotations.length > 0 && (
-        <div className="card overflow-hidden p-0">
-          <div className="px-6 py-4 border-b border-gray-100/80">
-            <h3 className="font-semibold text-gray-900">Cotizaciones recientes</h3>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100/80 bg-surface-50/50">
-                <th className="text-left px-6 py-3 font-medium text-gray-400 text-xs uppercase tracking-wider">Evento</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-400 text-xs uppercase tracking-wider">Tipo</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-400 text-xs uppercase tracking-wider">Nivel</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-400 text-xs uppercase tracking-wider">Estado</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-400 text-xs uppercase tracking-wider">Costo</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-400 text-xs uppercase tracking-wider">Calidad</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-400 text-xs uppercase tracking-wider">Fecha</th>
-                <th className="px-4 py-3 w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {quotations.map((q) => (
-                <tr
-                  key={q.id}
-                  onClick={() => navigate(`/quotations/${q.id}`)}
-                  className="border-b border-gray-50 hover:bg-surface-50 cursor-pointer transition-colors group"
+        <>
+          {/* Filter bar */}
+          <div className="glass" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
+              <Search size={15} style={{ position: 'absolute', left: 12, top: 11, color: '#AEAEB2', pointerEvents: 'none' }} />
+              <input
+                className="input"
+                placeholder={isStaff ? 'Buscar por cliente, evento...' : 'Buscar evento...'}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ paddingLeft: 36 }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {FILTERS.map((f) => (
+                <button
+                  key={f}
+                  className="btn btn-sm"
+                  onClick={() => setActiveFilter(f)}
+                  style={{
+                    background: activeFilter === f ? 'rgba(232,87,42,0.10)' : 'transparent',
+                    color: activeFilter === f ? '#E8572A' : '#6E6E73',
+                    border: activeFilter === f ? '1px solid rgba(232,87,42,0.20)' : '1px solid transparent',
+                    fontWeight: activeFilter === f ? 600 : 500,
+                  }}
                 >
-                  <td className="px-6 py-4 font-medium text-gray-900">{q.evento_nombre}</td>
-                  <td className="px-4 py-4">
-                    <EventTypeBadge tipo={q.evento_tipo} />
-                  </td>
-                  <td className="px-4 py-4">
-                    <LevelBadge nivel={q.nivel} />
-                  </td>
-                  <td className="px-4 py-4">
-                    <StatusBadge estado={q.estado} />
-                  </td>
-                  <td className="px-4 py-4 text-right font-semibold text-gray-900 tabular-nums">
-                    {q.costo_total != null
-                      ? `S/ ${q.costo_total.toLocaleString('es-PE', { minimumFractionDigits: 0 })}`
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    {q.quality_score != null ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold tabular-nums">
-                        {(q.quality_score * 100).toFixed(0)}%
-                      </span>
-                    ) : <span className="text-gray-300">—</span>}
-                  </td>
-                  <td className="px-4 py-4 text-gray-400 text-xs">
-                    {new Date(q.created_at).toLocaleDateString('es-PE', {
-                      day: '2-digit', month: 'short', year: 'numeric'
-                    })}
-                  </td>
-                  <td className="px-4 py-4">
-                    <ArrowUpRight size={16} className="text-gray-300 group-hover:text-accent-500 transition-colors" />
-                  </td>
-                </tr>
+                  {f}
+                </button>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+            <select
+              className="input"
+              value={filterEstado}
+              onChange={(e) => setFilterEstado(e.target.value)}
+              style={{ maxWidth: 160 }}
+            >
+              <option value="">Todos los estados</option>
+              <option value="completado">Completado</option>
+              <option value="procesando">Procesando</option>
+              <option value="error">Error</option>
+            </select>
+            {filtered.length !== quotations.length && (
+              <span style={{ fontSize: 12, color: '#AEAEB2', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                {filtered.length} de {quotations.length}
+              </span>
+            )}
+          </div>
+
+          {/* Table */}
+          <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
+            {/* Header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isStaff
+                ? '1.4fr 1fr 1fr 1fr 1fr 1fr 140px 32px'
+                : '1.4fr 1fr 1fr 1fr 1fr 140px 32px',
+              padding: '14px 22px',
+              fontSize: 11, fontWeight: 600, color: '#AEAEB2',
+              letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+              borderBottom: '1px solid rgba(26,23,20,0.06)',
+            }}>
+              <div>Evento</div>
+              {isStaff && <div>Cliente</div>}
+              <div>Tipo</div>
+              <div>Nivel</div>
+              <div>Estado</div>
+              <div style={{ textAlign: 'right' as const }}>Costo</div>
+              <div style={{ textAlign: 'right' as const }}>Calidad</div>
+              <div>Fecha</div>
+              <div />
+            </div>
+
+            {/* Rows */}
+            {filtered.length === 0 ? (
+              <div style={{ padding: '48px 22px', textAlign: 'center' as const, fontSize: 14, color: '#6E6E73' }}>
+                Sin resultados para los filtros seleccionados
+              </div>
+            ) : filtered.map((q, i) => (
+              <div
+                key={q.id}
+                onClick={() => navigate(`/quotations/${q.id}`)}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isStaff
+                    ? '1.4fr 1fr 1fr 1fr 1fr 1fr 140px 32px'
+                    : '1.4fr 1fr 1fr 1fr 1fr 140px 32px',
+                  padding: '16px 22px',
+                  alignItems: 'center',
+                  fontSize: 14,
+                  background: i % 2 === 1 ? 'rgba(255,255,255,0.40)' : 'transparent',
+                  borderBottom: i === filtered.length - 1 ? 'none' : '1px solid rgba(26,23,20,0.04)',
+                  cursor: 'pointer',
+                  transition: 'background 180ms',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(232,87,42,0.05)'
+                  const arrow = e.currentTarget.querySelector('.row-arrow') as HTMLElement | null
+                  if (arrow) { arrow.style.opacity = '1'; arrow.style.transform = 'translateX(2px)' }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = i % 2 === 1 ? 'rgba(255,255,255,0.40)' : 'transparent'
+                  const arrow = e.currentTarget.querySelector('.row-arrow') as HTMLElement | null
+                  if (arrow) { arrow.style.opacity = '0'; arrow.style.transform = 'translateX(0)' }
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                    background: 'rgba(26,23,20,0.06)', color: '#1D1D1F',
+                    fontSize: 11, fontWeight: 600,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {q.evento_nombre.split(' ').map((s: string) => s[0]).slice(0,2).join('')}
+                  </div>
+                  <span style={{ fontWeight: 500, color: '#1D1D1F' }}>{q.evento_nombre}</span>
+                </div>
+                {isStaff && (
+                  <div style={{ fontSize: 13, color: '#6E6E73' }}>{q.cliente_nombre ?? '—'}</div>
+                )}
+                <EventLabel tipo={q.evento_tipo} />
+                <div><LevelBadge nivel={q.nivel} /></div>
+                <div><StatusBadge estado={q.estado} /></div>
+                <div style={{ textAlign: 'right' as const, fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, color: '#1D1D1F' }}>
+                  {q.costo_total != null
+                    ? `S/ ${q.costo_total.toLocaleString('es-PE', { minimumFractionDigits: 0 })}`
+                    : <span style={{ color: '#AEAEB2', fontWeight: 400 }}>—</span>}
+                </div>
+                <div className="w-24">
+                  {q.quality_score != null
+                    ? <QualityBar value={q.quality_score} />
+                    : <span style={{ color: '#AEAEB2' }}>—</span>}
+                </div>
+                <div style={{ fontSize: 12, color: '#AEAEB2' }}>
+                  {new Date(q.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </div>
+                <div className="row-arrow" style={{ color: '#E8572A', opacity: 0, transition: 'opacity 180ms, transform 180ms', display: 'flex', justifyContent: 'flex-end' }}>
+                  <ArrowUpRight size={15} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination info */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, fontSize: 13, color: '#6E6E73' }}>
+            <div>Mostrando <strong style={{ color: '#1D1D1F' }}>{filtered.length}</strong> de <strong style={{ color: '#1D1D1F' }}>{quotations.length}</strong></div>
+            {isStaff && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                <Lock size={12} style={{ color: '#AEAEB2' }} />
+                <span style={{ color: '#AEAEB2' }}>Identidad de proveedores protegida</span>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   )

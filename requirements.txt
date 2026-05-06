@@ -36,3 +36,6 @@ jinja2==3.1.4
 
 # Forms / multipart
 python-multipart==0.0.12
+
+# Supabase (storage en producción — activo cuando STORAGE_BACKEND=supabase)
+supabase>=2.0.0

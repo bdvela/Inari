@@ -3,142 +3,229 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowRight, AlertCircle } from 'lucide-react'
+import { ArrowRight, Mail, Lock, AlertCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email:    z.string().email('Email inválido'),
   password: z.string().min(6, 'Mínimo 6 caracteres'),
 })
-
 type LoginForm = z.infer<typeof loginSchema>
 
+const STATS = [
+  { v: '+500', l: 'eventos' },
+  { v: '43',   l: 'proveedores' },
+  { v: '9.2',  l: 'NPS interno' },
+]
+
 export default function LoginPage() {
-  const { login } = useAuth()
-  const navigate = useNavigate()
+  const { login }   = useAuth()
+  const navigate    = useNavigate()
   const [error, setError] = useState<string | null>(null)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
+  const { register, handleSubmit, formState: { errors, isSubmitting } } =
+    useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
 
   const onSubmit = async (data: LoginForm) => {
     try {
       setError(null)
       await login(data.email, data.password)
-      navigate('/')
+      const role = localStorage.getItem('user_role')
+      navigate(role === 'admin' ? '/admin/providers' : '/dashboard')
     } catch {
       setError('Credenciales incorrectas. Verifica tu email y contraseña.')
     }
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left panel — branding */}
-      <div className="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(233,69,96,0.15),_transparent_60%)]" />
-        <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-accent-500 rounded-lg flex items-center justify-center shadow-glow">
-              <span className="text-white font-black text-sm">I</span>
-            </div>
-            <span className="text-white font-bold text-lg">Inari Group</span>
-          </div>
+    <div style={{ display: 'grid', gridTemplateColumns: '55fr 45fr', minHeight: '100vh' }}>
 
-          <div>
-            <h2 className="text-4xl font-extrabold text-white leading-tight mb-4">
-              Gestión de eventos<br />
-              <span className="text-accent-400">simplificada</span>
-            </h2>
-            <p className="text-white/60 text-base max-w-md leading-relaxed">
-              Cotizaciones optimizadas en minutos. Tecnología que transforma la manera de organizar eventos.
-            </p>
-          </div>
+      {/* ── Izquierda — mesh dark ── */}
+      <div
+        className="mesh-dark hidden lg:flex flex-col justify-between"
+        style={{ padding: '48px 56px' }}
+      >
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span className="logo-mark">I</span>
+          <span style={{
+            fontFamily: 'Syne, sans-serif', fontWeight: 800,
+            fontSize: 13, letterSpacing: '0.18em', lineHeight: 1.1, color: '#F2EFE9',
+          }}>
+            INARI<br/>
+            <span style={{ color: 'rgba(242,239,233,0.55)', fontWeight: 600 }}>GROUP</span>
+          </span>
+        </div>
 
-          <p className="text-white/30 text-xs">
-            Inari Group · Lima, Perú · 2026
+        {/* Headline */}
+        <div>
+          <div style={{
+            fontSize: 12, color: 'rgba(232,87,42,0.85)',
+            fontWeight: 600, letterSpacing: '0.16em',
+            textTransform: 'uppercase', marginBottom: 22,
+          }}>
+            — Inari Group · Lima
+          </div>
+          <h1 style={{
+            fontFamily: 'Syne, sans-serif', fontWeight: 800,
+            fontSize: 78, lineHeight: 0.98,
+            margin: 0, color: '#F2EFE9', letterSpacing: '-0.035em',
+          }}>
+            Eventos<br/>que <span className="text-gradient">trascienden</span>.
+          </h1>
+          <p style={{
+            marginTop: 26, fontSize: 17, lineHeight: 1.55,
+            color: 'rgba(242,239,233,0.65)', maxWidth: 460,
+          }}>
+            La plataforma interna de coordinación de Inari. Cotiza, asigna proveedores
+            y produce eventos sin fricción.
           </p>
+        </div>
+
+        {/* Micro-stats */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          {STATS.map((s) => (
+            <div key={s.l} className="glass-dark" style={{ flex: 1, padding: '18px 20px' }}>
+              <div style={{
+                fontFamily: 'Syne, sans-serif', fontSize: 32, fontWeight: 800,
+                color: '#F2EFE9', letterSpacing: '-0.02em', lineHeight: 1,
+              }}>
+                {s.v}
+              </div>
+              <div style={{ marginTop: 6, fontSize: 12, color: 'rgba(242,239,233,0.55)' }}>
+                {s.l}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Right panel — form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-surface-50">
-        <div className="w-full max-w-[400px] animate-fade-in">
-          {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-10">
-            <div className="w-12 h-12 bg-accent-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-glow">
-              <span className="text-white font-black text-lg">I</span>
-            </div>
-            <h1 className="text-xl font-bold text-gray-900">Inari Group</h1>
+      {/* ── Derecha — mesh claro con form ── */}
+      <div className="mesh" style={{
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: 48,
+      }}>
+        <div className="mesh-blob" />
+
+        {/* Card glass-raised */}
+        <div className="glass-raised animate-fade-in" style={{ width: '100%', maxWidth: 420, padding: 40 }}>
+
+          {/* Logo mobile */}
+          <div className="lg:hidden" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
+            <span className="logo-mark">I</span>
+            <span style={{
+              fontFamily: 'Syne, sans-serif', fontWeight: 800,
+              fontSize: 13, letterSpacing: '0.18em', lineHeight: 1.1,
+            }}>
+              INARI<br/><span style={{ color: '#6E6E73', fontWeight: 600 }}>GROUP</span>
+            </span>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">Bienvenido</h2>
-          <p className="text-gray-500 text-sm mb-8">Ingresa tus credenciales para continuar</p>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#E8572A', letterSpacing: '0.14em', marginBottom: 14 }}>
+            ACCESO INTERNO
+          </div>
+          <h2 style={{
+            fontFamily: 'Syne, sans-serif', fontSize: 36, fontWeight: 700,
+            margin: 0, letterSpacing: '-0.025em', lineHeight: 1.05, color: '#1D1D1F',
+          }}>
+            Bienvenido<br/>de vuelta.
+          </h2>
+          <p style={{ marginTop: 12, marginBottom: 32, fontSize: 14, color: '#6E6E73' }}>
+            Ingresa con tu cuenta de equipo Inari.
+          </p>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            {/* Email */}
+            <div style={{ marginBottom: 18 }}>
               <label className="label">Email</label>
-              <input
-                type="email"
-                {...register('email')}
-                className="input-field"
-                placeholder="tu@email.com"
-                autoComplete="email"
-              />
+              <div style={{ position: 'relative' }}>
+                <Mail size={16} style={{ position: 'absolute', left: 14, top: 14, color: '#AEAEB2', pointerEvents: 'none' }} />
+                <input
+                  {...register('email')}
+                  type="email"
+                  className="input"
+                  placeholder="nombre@inari.pe"
+                  autoComplete="email"
+                  style={{ paddingLeft: 40 }}
+                />
+              </div>
               {errors.email && (
-                <p className="text-red-500 text-xs mt-1.5">{errors.email.message}</p>
+                <p style={{ color: '#FF3B30', fontSize: 12, marginTop: 6 }}>{errors.email.message}</p>
               )}
             </div>
 
-            <div>
+            {/* Password */}
+            <div style={{ marginBottom: 10 }}>
               <label className="label">Contraseña</label>
-              <input
-                type="password"
-                {...register('password')}
-                className="input-field"
-                placeholder="••••••••"
-                autoComplete="current-password"
-              />
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} style={{ position: 'absolute', left: 14, top: 14, color: '#AEAEB2', pointerEvents: 'none' }} />
+                <input
+                  {...register('password')}
+                  type="password"
+                  className="input"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  style={{ paddingLeft: 40 }}
+                />
+              </div>
               {errors.password && (
-                <p className="text-red-500 text-xs mt-1.5">{errors.password.message}</p>
+                <p style={{ color: '#FF3B30', fontSize: 12, marginTop: 6 }}>{errors.password.message}</p>
               )}
             </div>
 
+            {/* Remember + forgot */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: '#6E6E73', cursor: 'pointer' }}>
+                <span style={{
+                  width: 16, height: 16, borderRadius: 4,
+                  background: '#E8572A', display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0,
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M1.5 5L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+                Recordarme
+              </label>
+              <span style={{ fontSize: 13, color: '#AEAEB2' }}>
+                ¿Olvidaste tu clave?
+              </span>
+            </div>
+
+            {/* Error */}
             {error && (
-              <div className="flex items-center gap-2 bg-red-50 text-red-700 text-sm p-3 rounded-xl border border-red-100">
-                <AlertCircle size={16} className="flex-shrink-0" />
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: 'rgba(255,59,48,0.08)', border: '1px solid rgba(255,59,48,0.18)',
+                borderRadius: 10, padding: '12px 14px', marginBottom: 16,
+                fontSize: 13, color: '#b3271e',
+              }}>
+                <AlertCircle size={15} style={{ flexShrink: 0 }} />
                 {error}
               </div>
             )}
 
+            {/* Submit */}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="btn-primary w-full flex items-center justify-center gap-2"
+              className="btn btn-primary btn-lg"
+              style={{ width: '100%' }}
             >
-              {isSubmitting ? (
-                <span className="animate-pulse-soft">Ingresando...</span>
-              ) : (
-                <>
-                  Ingresar
-                  <ArrowRight size={16} />
-                </>
-              )}
+              {isSubmitting ? 'Ingresando...' : (<>Ingresar <ArrowRight size={15} /></>)}
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-            <p className="text-sm text-gray-500">
-              ¿No tienes cuenta?{' '}
-              <Link to="/register" className="text-accent-500 font-semibold hover:text-accent-600 transition-colors">
-                Crear cuenta
-              </Link>
-            </p>
+          {/* Create account */}
+          <div style={{ marginTop: 28, textAlign: 'center', fontSize: 13, color: '#6E6E73' }}>
+            ¿Aún no tienes acceso?{' '}
+            <Link to="/register" style={{ color: '#E8572A', textDecoration: 'none', fontWeight: 600 }}>
+              Solicítalo a tu administrador
+            </Link>
           </div>
         </div>
       </div>
+
     </div>
   )
 }

@@ -7,22 +7,25 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "design:lint": "design.md lint ../DESIGN.md",
+    "design:export": "design.md export ../DESIGN.md --format tailwind"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.9.0",
     "@tanstack/react-query": "^5.56.2",
     "axios": "^1.7.7",
+    "lucide-react": "^0.441.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.2.9",
     "react-hook-form": "^7.53.0",
     "react-router-dom": "^6.26.2",
-    "zod": "^3.23.8",
-    "@hookform/resolvers": "^3.9.0",
-    "lucide-react": "^0.441.0",
-    "sonner": "^1.5.0"
+    "sonner": "^1.5.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@google/design.md": "^0.1.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

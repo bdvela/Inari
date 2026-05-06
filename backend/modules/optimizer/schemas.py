@@ -31,6 +31,11 @@ class OptimizationInput(BaseModel):
     event_type: str
     event_date: date
     providers: list[ProviderOption]
+    # "balanced": minimiza costo (básica) | "premium": maximiza calidad absoluta
+    optimization_mode: str = "balanced"
+    # Multiplicador de quality_index — deriva de luxury_level detectado en imágenes
+    # 1.0 = comportamiento por defecto | >1.0 = favorece calidad | <1.0 = favorece precio
+    quality_weight: float = 1.0
 
     @model_validator(mode="after")
     def validate_providers_not_empty(self) -> "OptimizationInput":

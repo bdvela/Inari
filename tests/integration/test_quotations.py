@@ -369,3 +369,166 @@ async def test_reprocess_without_optionals(client, seeded_db):
     assert r.status_code == 202
     body = r.json()
     assert body["basica_factible"] is True  # sin opcionales, solo 3 proveedores obligatorios
+
+
+# ---------------------------------------------------------------------------
+# Helpers para swap tests
+# ---------------------------------------------------------------------------
+
+async def _make_completed_quotation(client, token):
+    """Genera cotización completada y retorna (quotation_id, detalles)."""
+    with patch("backend.api.routers.quotations.get_storage", return_value=mock_storage()):
+        r = await client.post(
+            "/api/v1/quotations/generate",
+            data=generate_form_data(presupuesto=30000),
+            headers=auth_headers(token),
+        )
+    assert r.status_code == 202
+    basica_id = r.json()["quotation_basica_id"]
+    q = await client.get(f"/api/v1/quotations/{basica_id}", headers=auth_headers(token))
+    assert q.status_code == 200
+    return basica_id, q.json()["detalles"]
+
+
+async def _make_admin(client, email):
+    await register_user(client, email=email, nombre="Admin Swap", role="admin")
+    return await login_user(client, email=email)
+
+
+def _provider_payload(servicio_id, *, tipos=None, fechas=None, nombre="Test Prov"):
+    return {
+        "nombre": nombre,
+        "servicio_id": servicio_id,
+        "costo_base": 1500.0,
+        "indice_calidad": 0.65,
+        "puntuacion_historica": 0.65,
+        "experiencia_en_tipo_evento": 0.65,
+        "tipos_evento_compatibles": tipos or ["boda"],
+        "fechas_no_disponibles": fechas or [],
+    }
+
+
+# ---------------------------------------------------------------------------
+# CU-swap: validaciones del endpoint POST /quotations/{id}/swap
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_swap_valid_provider(client, seeded_db):
+    """Happy path: swap con proveedor válido → HTTP 200, recalcula totales."""
+    await register_user(client, email="swap_happy@test.com")
+    token = await login_user(client, email="swap_happy@test.com")
+    admin_token = await _make_admin(client, "swap_admin_happy@test.com")
+
+    quot_id, detalles = await _make_completed_quotation(client, token)
+    assert detalles, "La cotización debe tener detalles"
+    first = detalles[0]
+    servicio_id = first["servicio_id"]
+    detalle_id = first["id"]
+
+    # Crear proveedor válido para el mismo servicio
+    r = await client.post(
+        "/api/v1/providers/",
+        json=_provider_payload(servicio_id, nombre="Swap Valid Provider"),
+        headers=auth_headers(admin_token),
+    )
+    assert r.status_code == 201
+    new_prov_id = r.json()["id"]
+
+    r = await client.post(
+        f"/api/v1/quotations/{quot_id}/swap",
+        json={"detalle_id": detalle_id, "new_provider_id": new_prov_id},
+        headers=auth_headers(token),
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["costo_total"] is not None
+    assert body["quality_score"] is not None
+
+
+@pytest.mark.asyncio
+async def test_swap_inactive_provider_rejected(client, seeded_db):
+    """Proveedor inactivo (soft-deleted) → HTTP 400."""
+    await register_user(client, email="swap_inactive_u@test.com")
+    token = await login_user(client, email="swap_inactive_u@test.com")
+    admin_token = await _make_admin(client, "swap_admin_inactive@test.com")
+
+    quot_id, detalles = await _make_completed_quotation(client, token)
+    servicio_id = detalles[0]["servicio_id"]
+    detalle_id = detalles[0]["id"]
+
+    # Crear proveedor y luego desactivarlo (soft-delete)
+    r = await client.post(
+        "/api/v1/providers/",
+        json=_provider_payload(servicio_id, nombre="Swap Inactive Prov"),
+        headers=auth_headers(admin_token),
+    )
+    inactive_id = r.json()["id"]
+    await client.delete(f"/api/v1/providers/{inactive_id}", headers=auth_headers(admin_token))
+
+    r = await client.post(
+        f"/api/v1/quotations/{quot_id}/swap",
+        json={"detalle_id": detalle_id, "new_provider_id": inactive_id},
+        headers=auth_headers(token),
+    )
+    assert r.status_code == 400, r.text
+    assert "activo" in r.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_swap_incompatible_event_type_rejected(client, seeded_db):
+    """Proveedor incompatible con tipo de evento → HTTP 400."""
+    await register_user(client, email="swap_incompat_u@test.com")
+    token = await login_user(client, email="swap_incompat_u@test.com")
+    admin_token = await _make_admin(client, "swap_admin_incompat@test.com")
+
+    quot_id, detalles = await _make_completed_quotation(client, token)
+    servicio_id = detalles[0]["servicio_id"]
+    detalle_id = detalles[0]["id"]
+
+    # Proveedor solo compatible con corporativo, no con boda
+    r = await client.post(
+        "/api/v1/providers/",
+        json=_provider_payload(servicio_id, tipos=["corporativo"], nombre="Swap Incompat Prov"),
+        headers=auth_headers(admin_token),
+    )
+    incompat_id = r.json()["id"]
+
+    r = await client.post(
+        f"/api/v1/quotations/{quot_id}/swap",
+        json={"detalle_id": detalle_id, "new_provider_id": incompat_id},
+        headers=auth_headers(token),
+    )
+    assert r.status_code == 400, r.text
+    assert "compatible" in r.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_swap_blocked_date_rejected(client, seeded_db):
+    """Proveedor con fecha del evento bloqueada → HTTP 400."""
+    await register_user(client, email="swap_blocked_u@test.com")
+    token = await login_user(client, email="swap_blocked_u@test.com")
+    admin_token = await _make_admin(client, "swap_admin_blocked@test.com")
+
+    quot_id, detalles = await _make_completed_quotation(client, token)
+    servicio_id = detalles[0]["servicio_id"]
+    detalle_id = detalles[0]["id"]
+
+    # Proveedor con la fecha del evento bloqueada
+    r = await client.post(
+        "/api/v1/providers/",
+        json=_provider_payload(
+            servicio_id,
+            fechas=[FUTURE_DATE],
+            nombre="Swap Blocked Prov",
+        ),
+        headers=auth_headers(admin_token),
+    )
+    blocked_id = r.json()["id"]
+
+    r = await client.post(
+        f"/api/v1/quotations/{quot_id}/swap",
+        json={"detalle_id": detalle_id, "new_provider_id": blocked_id},
+        headers=auth_headers(token),
+    )
+    assert r.status_code == 400, r.text
+    assert "disponible" in r.json()["detail"].lower()

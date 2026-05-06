@@ -8,6 +8,8 @@ import DashboardPage from './pages/DashboardPage'
 import NewQuotationPage from './pages/NewQuotationPage'
 import QuotationResultPage from './pages/QuotationResultPage'
 import AdminProvidersPage from './pages/AdminProvidersPage'
+import AdminRulesPage from './pages/AdminRulesPage'
+import AdminPackagesPage from './pages/AdminPackagesPage'
 import Layout from './components/shared/Layout'
 
 function ProtectedRoute({ children, requiredRole }: {
@@ -54,6 +56,22 @@ export default function App() {
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminProvidersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/rules"
+            element={
+              <ProtectedRoute requiredRole="ejecutivo">
+                <AdminRulesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/packages"
+            element={
+              <ProtectedRoute requiredRole="ejecutivo">
+                <AdminPackagesPage />
               </ProtectedRoute>
             }
           />

@@ -175,7 +175,8 @@ class Quotation(Base, TimestampMixin):
     )
     costo_total: Mapped[float | None] = mapped_column(Float)
     quality_score: Mapped[float | None] = mapped_column(Float)
-    pdf_url: Mapped[str | None] = mapped_column(String(500))
+    # Resultado del análisis de estilo visual (luxury_level, aesthetic_style, etc.)
+    style_analysis_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     # Snapshot de parámetros usados (para trazabilidad)
     parametros_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
@@ -246,3 +247,18 @@ class OptimizationLog(Base):
     )
 
     cotizacion: Mapped[Quotation] = relationship("Quotation", back_populates="logs")
+
+
+# ---------------------------------------------------------------------------
+# Paquete de servicios propios — infraestructura INARI GROUP
+# ---------------------------------------------------------------------------
+class BasePackage(Base, TimestampMixin):
+    __tablename__ = "base_packages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    cost: Mapped[float] = mapped_column(Float, nullable=False)
+    min_guests: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_guests: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

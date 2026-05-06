@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api.routers import auth, images, providers, quotations
+from backend.api.routers import auth, images, packages, providers, quotations, rules
 from backend.core.config import get_settings
 from backend.core.database import create_tables
 from backend.core.logging import setup_logging
@@ -30,9 +30,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,6 +42,8 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(quotations.router, prefix="/api/v1")
 app.include_router(providers.router, prefix="/api/v1")
+app.include_router(rules.router, prefix="/api/v1")
+app.include_router(packages.router, prefix="/api/v1")
 app.include_router(images.router, prefix="/api/v1")
 
 

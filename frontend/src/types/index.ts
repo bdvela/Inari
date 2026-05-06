@@ -56,6 +56,14 @@ export interface Quotation {
   quality_score: number | null
   created_at: string
   evento_id: number
+  // Info del evento (disponible desde get_quotation)
+  evento_tipo: EventType | null
+  evento_fecha: string | null
+  num_invitados: number | null
+  estilo: string | null
+  presupuesto_maximo: number | null
+  style_analysis: StyleAnalysisResult | null
+  package_selected: PackageSelected | null
   detalles: QuotationDetail[]
 }
 
@@ -83,6 +91,13 @@ export interface DashboardStats {
   costo_promedio: number | null
 }
 
+export interface PackageSelected {
+  id: number
+  name: string
+  cost: number
+  exceeds_max_range: boolean
+}
+
 export interface GenerateQuotationResult {
   evento_id: number
   quotation_basica_id: number
@@ -92,6 +107,7 @@ export interface GenerateQuotationResult {
   basica_costo: number | null
   premium_costo: number | null
   version: number
+  package_selected: PackageSelected | null
 }
 
 export interface Provider {
@@ -115,9 +131,61 @@ export interface QuotationSummary {
   evento_id: number
   evento_tipo: EventType
   evento_nombre: string
+  cliente_nombre: string | null
+}
+
+export interface BusinessRule {
+  id: number
+  tipo_evento: EventType
+  servicio_id: number
+  servicio_nombre: string
+  es_obligatorio: boolean
+  condicion: Record<string, unknown> | null
+  descripcion: string | null
+}
+
+export interface ServiceOption {
+  id: number
+  nombre: string
+  tipo: string
+}
+
+export interface EventTypeOption {
+  value: string
+  label: string
 }
 
 export interface ReprocessRequest {
   presupuesto_maximo: number
   incluir_opcionales: boolean
+}
+
+export interface ParsedDescription {
+  parseable: boolean
+  message: string
+  event_type: string | null
+  guest_count: number | null
+  approximate_date: string | null
+  max_budget: number | null
+  style_hints: string[]
+  mandatory_services: string[]
+  confidence: number
+}
+
+export interface ServicePackageModel {
+  id: number
+  name: string
+  content: string
+  cost: number
+  min_guests: number
+  max_guests: number
+  is_active: boolean
+}
+
+export interface StyleAnalysisResult {
+  dominant_colors: string[]
+  aesthetic_style: string
+  luxury_level: number
+  style_keywords: string[]
+  confidence: number
 }

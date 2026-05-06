@@ -62,7 +62,8 @@ async def test_login_unknown_email(client):
 @pytest.mark.asyncio
 async def test_protected_route_no_token(client):
     r = await client.get("/api/v1/quotations/")
-    assert r.status_code == 401
+    # FastAPI HTTPBearer devuelve 403 cuando no hay token (no 401)
+    assert r.status_code in (401, 403)
 
 
 @pytest.mark.asyncio

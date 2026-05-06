@@ -18,6 +18,7 @@ from backend.api.dependencies.auth import get_current_user, require_role
 from backend.core.database import get_db
 from backend.core.logging import get_logger
 from backend.models.models import (
+    BasePackage,
     Event,
     EventType,
     OptimizationLog,
@@ -39,9 +40,25 @@ from backend.modules.rules_engine.schemas import RuleEvaluationInput
 from backend.modules.storage import StorageError, get_storage
 from backend.modules.visual_analysis.client import analyze_image
 from backend.modules.visual_analysis.exceptions import VisualAnalysisError
+from backend.modules.visual_analysis.text_parser import parse_description
+from backend.modules.visual_analysis.style_analysis import analyze_style_references
+from backend.modules.visual_analysis.schemas import ParsedDescription
+from backend.modules.packages.selector import select_package
+from backend.modules.packages.schemas import ServicePackage as ServicePackageSvc
+from backend.modules.packages.exceptions import NoPackagesConfiguredError
 
 logger = get_logger("api.quotations")
 router = APIRouter(prefix="/quotations", tags=["Cotizaciones"])
+
+
+def _luxury_to_quality_weight(luxury_level: int) -> float:
+    """Convierte luxury_level (1-5) a quality_weight para el optimizer."""
+    mapping = {1: 0.70, 2: 0.85, 3: 1.00, 4: 1.30, 5: 1.60}
+    return mapping.get(max(1, min(5, luxury_level)), 1.00)
+
+
+class ParseDescriptionRequest(BaseModel):
+    description: str
 
 
 class QuotationCreateRequest(BaseModel):
@@ -63,6 +80,18 @@ class QuotationSummary(BaseModel):
     created_at: datetime
 
 
+@router.post("/parse-description", response_model=ParsedDescription)
+async def parse_event_description(
+    body: ParseDescriptionRequest,
+    _: User = Depends(get_current_user),
+):
+    """
+    Extrae parámetros de evento desde descripción libre del cliente.
+    Usa Gemini para interpretar lenguaje natural. Nunca lanza excepción — siempre retorna JSON.
+    """
+    return await parse_description(body.description)
+
+
 @router.post("/generate", status_code=status.HTTP_202_ACCEPTED)
 async def generate_quotation(
     evento_tipo: str = Form(...),
@@ -72,6 +101,7 @@ async def generate_quotation(
     estilo: str | None = Form(None),
     descripcion: str | None = Form(None),
     image: UploadFile | None = File(None),
+    style_images: list[UploadFile] = File(default=[]),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -79,8 +109,32 @@ async def generate_quotation(
     CU-01: Generar cotización desde imagen referencial.
     Flujo: imagen → análisis visual → wizard params → rules → optimizer → propuesta → PDF
     """
+    if current_user.role == UserRole.ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="El rol Admin es de configuración del sistema y no puede generar cotizaciones.",
+        )
+
     from datetime import date as date_type
     event_date = date_type.fromisoformat(evento_fecha)
+
+    # Análisis de imágenes de estilo (si se enviaron) — determina quality_weight
+    style_result = None
+    quality_weight = 1.0
+    if style_images:
+        valid_images = [
+            (await img.read(), img.filename or "ref.jpg")
+            for img in style_images
+            if img.filename
+        ]
+        if valid_images:
+            style_result = await analyze_style_references(valid_images)
+            if style_result and style_result.confidence > 0.3:
+                quality_weight = _luxury_to_quality_weight(style_result.luxury_level)
+                logger.info(
+                    "Estilo detectado: %s (luxury_level=%d, quality_weight=%.2f)",
+                    style_result.aesthetic_style, style_result.luxury_level, quality_weight,
+                )
 
     # 1. Crear evento
     event = Event(
@@ -176,6 +230,40 @@ async def generate_quotation(
         for p in db_providers
     ]
 
+    # 4b. Selección automática de paquete propio según invitados
+    package_cost = 0.0
+    selected_pkg_info = None
+
+    db_pkgs_result = await db.execute(
+        select(BasePackage).where(BasePackage.is_active == True)  # noqa: E712
+    )
+    db_pkgs = list(db_pkgs_result.scalars().all())
+
+    if db_pkgs:
+        pkg_list = [
+            ServicePackageSvc(
+                id=p.id, name=p.name, content=p.content,
+                cost=p.cost, min_guests=p.min_guests, max_guests=p.max_guests,
+            )
+            for p in db_pkgs
+        ]
+        try:
+            pkg_result = select_package(num_invitados, pkg_list)
+            if pkg_result.selected_package:
+                package_cost = pkg_result.selected_package.cost
+                selected_pkg_info = {
+                    "id": pkg_result.selected_package.id,
+                    "name": pkg_result.selected_package.name,
+                    "cost": pkg_result.selected_package.cost,
+                    "exceeds_max_range": pkg_result.exceeds_max_range,
+                }
+                if pkg_result.alert:
+                    logger.warning("Package alert evento %d: %s", event.id, pkg_result.alert)
+        except NoPackagesConfiguredError:
+            pass
+
+    available_budget = max(0.0, presupuesto_maximo - package_cost)
+
     # 5. Crear cotizaciones en BD (básica + premium)
     quot_repo = QuotationRepository(db)
     version = await quot_repo.get_next_version(event.id)
@@ -190,6 +278,7 @@ async def generate_quotation(
             "event_type": evento_tipo,
             "num_invitados": num_invitados,
             "budget": presupuesto_maximo,
+            "package_selected": selected_pkg_info,
         },
     )
     q_premium = Quotation(
@@ -202,6 +291,7 @@ async def generate_quotation(
             "event_type": evento_tipo,
             "num_invitados": num_invitados,
             "budget": presupuesto_maximo * 1.3,
+            "package_selected": selected_pkg_info,
         },
     )
     db.add(q_basica)
@@ -210,12 +300,13 @@ async def generate_quotation(
 
     # 6. Optimizar
     opt_input = OptimizationInput(
-        budget=presupuesto_maximo,
+        budget=available_budget,
         required_services=rule_result.required_services,
         optional_services=rule_result.optional_services,
         event_type=evento_tipo,
         event_date=event_date,
         providers=provider_options,
+        quality_weight=quality_weight,
     )
 
     basica, premium, res_basica, res_premium = generate_proposals(
@@ -230,7 +321,8 @@ async def generate_quotation(
         version=version,
     )
 
-    # 7. Persistir detalles y logs
+    # 7. Persistir detalles, logs y style_analysis
+    style_json = style_result.model_dump() if style_result else None
     now = datetime.now(timezone.utc)
     for quotation, result, proposal in [
         (q_basica, res_basica, basica),
@@ -246,10 +338,12 @@ async def generate_quotation(
                     nombre_servicio=sp.service_name,
                 ))
             quotation.estado = QuotationStatus.COMPLETADO
-            quotation.costo_total = result.total_cost
+            quotation.costo_total = result.total_cost + package_cost
             quotation.quality_score = result.quality_score
         else:
             quotation.estado = QuotationStatus.ERROR
+
+        quotation.style_analysis_json = style_json
 
         db.add(OptimizationLog(
             cotizacion_id=quotation.id,
@@ -272,6 +366,8 @@ async def generate_quotation(
         "basica_costo": res_basica.total_cost if res_basica.feasible else None,
         "premium_costo": res_premium.total_cost if res_premium.feasible else None,
         "version": version,
+        "style_detected": style_result.model_dump() if style_result and style_result.confidence > 0.3 else None,
+        "package_selected": selected_pkg_info,
     }
 
 
@@ -283,7 +379,7 @@ async def list_my_quotations(
     """Lista cotizaciones del usuario actual. Ejecutivos/admin ven todas."""
     base_query = (
         select(Quotation)
-        .options(selectinload(Quotation.evento))
+        .options(selectinload(Quotation.evento), selectinload(Quotation.cliente))
         .order_by(Quotation.created_at.desc())
         .limit(100)
     )
@@ -308,6 +404,7 @@ async def list_my_quotations(
                 f"{q.evento.tipo.value.capitalize()} — {q.evento.fecha.strftime('%d/%m/%Y')}"
                 if q.evento else f"Evento #{q.evento_id}"
             ),
+            "cliente_nombre": q.cliente.nombre if q.cliente else None,
         }
         for q in quotations
     ]
@@ -372,6 +469,14 @@ async def get_quotation(
         "quality_score": q.quality_score,
         "created_at": q.created_at,
         "evento_id": q.evento_id,
+        # Información del evento para mostrar en UI sin join adicional
+        "evento_tipo": q.evento.tipo.value if q.evento else None,
+        "evento_fecha": q.evento.fecha.isoformat() if q.evento else None,
+        "num_invitados": q.evento.num_invitados if q.evento else None,
+        "estilo": q.evento.estilo if q.evento else None,
+        "presupuesto_maximo": q.evento.presupuesto_maximo if q.evento else None,
+        "style_analysis": q.style_analysis_json,
+        "package_selected": q.parametros_json.get("package_selected") if q.parametros_json else None,
         "detalles": [
             {
                 "id": d.id,
@@ -667,6 +772,24 @@ async def swap_provider(
     if new_provider.servicio_id != detalle.proveedor.servicio_id:
         raise HTTPException(status_code=422, detail="El proveedor no ofrece el mismo servicio")
 
+    # Validar proveedor activo, compatible con tipo de evento y disponible en fecha
+    if not new_provider.is_active:
+        raise HTTPException(status_code=400, detail="El proveedor seleccionado no está activo")
+
+    if q.evento:
+        event_type = q.evento.tipo.value
+        if event_type not in (new_provider.tipos_evento_compatibles or []):
+            raise HTTPException(
+                status_code=400,
+                detail=f"El proveedor no es compatible con eventos de tipo '{event_type}'",
+            )
+        event_date_str = q.evento.fecha.isoformat()
+        if event_date_str in (new_provider.fechas_no_disponibles or []):
+            raise HTTPException(
+                status_code=400,
+                detail=f"El proveedor no está disponible en la fecha del evento ({event_date_str})",
+            )
+
     # Actualizar detalle
     detalle.proveedor_id = new_provider.id
     detalle.costo_negociado = new_provider.costo_base
@@ -782,8 +905,20 @@ async def download_pdf(
     if q.estado != QuotationStatus.COMPLETADO:
         raise HTTPException(status_code=422, detail="La cotización aún no está completa")
 
+    from backend.modules.pdf_gen.generator import is_pdf_available
+    from backend.modules.proposal_gen.narrative import generate_narrative
     from backend.modules.proposal_gen.schemas import Proposal, ProposalItem
     from datetime import datetime, timezone
+
+    # Obtener algoritmo real del log de optimización
+    log_result = await db.execute(
+        select(OptimizationLog)
+        .where(OptimizationLog.cotizacion_id == quotation_id)
+        .order_by(OptimizationLog.created_at.desc())
+        .limit(1)
+    )
+    opt_log = log_result.scalar_one_or_none()
+    algorithm_used = opt_log.algoritmo_usado if opt_log else "DESCONOCIDO"
 
     items = [
         ProposalItem(
@@ -796,6 +931,21 @@ async def download_pdf(
         for d in q.detalles
     ]
 
+    # Generar narrativa personalizada (Gemini) — retorna "" si falla, no bloquea
+    style_data = q.style_analysis_json or {}
+    narrative_text = await generate_narrative(
+        evento_tipo=q.evento.tipo.value if q.evento else "otro",
+        num_invitados=q.evento.num_invitados if q.evento else 0,
+        evento_fecha=q.evento.fecha if q.evento else datetime.now(timezone.utc).date(),
+        estilo=q.evento.estilo if q.evento else None,
+        aesthetic_style=style_data.get("aesthetic_style"),
+        style_keywords=style_data.get("style_keywords", []),
+        servicios=[
+            {"servicio": d.nombre_servicio, "proveedor": d.proveedor.nombre if d.proveedor else "", "costo": d.costo_negociado}
+            for d in q.detalles
+        ],
+    )
+
     proposal = Proposal(
         quotation_id=q.id,
         nivel=q.nivel.value,
@@ -807,16 +957,26 @@ async def download_pdf(
         items=items,
         costo_total=q.costo_total or 0.0,
         quality_score=q.quality_score or 0.0,
-        algorithm_used="GREEDY",
+        algorithm_used=algorithm_used,
         generated_at=datetime.now(timezone.utc),
         version=q.version,
+        narrative=narrative_text,
     )
 
-    pdf_bytes = generate_pdf(proposal)
-    filename = f"propuesta_{quotation_id}_{q.nivel.value}.pdf"
+    content_bytes = generate_pdf(proposal)
 
-    return StreamingResponse(
-        io.BytesIO(pdf_bytes),
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    if is_pdf_available():
+        filename = f"propuesta_{quotation_id}_{q.nivel.value}.pdf"
+        return StreamingResponse(
+            io.BytesIO(content_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    else:
+        # Fallback HTML imprimible (dev en Mac sin WeasyPrint nativo)
+        filename = f"propuesta_{quotation_id}_{q.nivel.value}.html"
+        return StreamingResponse(
+            io.BytesIO(content_bytes),
+            media_type="text/html; charset=utf-8",
+            headers={"Content-Disposition": f'inline; filename="{filename}"'},
+        )

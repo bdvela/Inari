@@ -38,6 +38,8 @@
     .totals-item .score { font-size: 16pt; font-weight: 700; color: #00d4aa; }
     .totals-item .algo { font-size: 12pt; font-weight: 600; opacity: 0.9; }
 
+    .narrative-section { margin-bottom: 25px; padding: 18px 20px; background: #fdf9ee; border-left: 3px solid #C9A84C; border-radius: 2px; }
+    .narrative-text { font-size: 10.5pt; color: #2d2d2d; line-height: 1.7; white-space: pre-line; }
     .footer { text-align: center; font-size: 8pt; color: #6c757d; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e9ecef; }
     .footer strong { color: #1a1a2e; }
   </style>
@@ -68,6 +70,13 @@
     <div class="value">v{{ proposal.version }} · {{ proposal.generated_at.strftime('%d/%m/%Y %H:%M') }}</div>
   </div>
 </div>
+
+{% if proposal.narrative %}
+<div class="narrative-section">
+  <div class="section-title" style="margin-bottom: 10px;">Descripción de tu evento</div>
+  <div class="narrative-text">{{ proposal.narrative }}</div>
+</div>
+{% endif %}
 
 <div class="section-title">Servicios Seleccionados</div>
 

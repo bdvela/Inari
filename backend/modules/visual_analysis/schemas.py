@@ -1,5 +1,27 @@
-"""Schemas del módulo de análisis visual."""
+"""Schemas del módulo de análisis visual y procesamiento de lenguaje natural."""
 from pydantic import BaseModel, Field
+
+
+class ParsedDescription(BaseModel):
+    """Resultado del parser de descripción libre de evento."""
+    parseable: bool
+    message: str = ""                    # mensaje si parseable=False
+    event_type: str | None = None
+    guest_count: int | None = None
+    approximate_date: str | None = None  # "diciembre 2025" o "2025-12-15"
+    max_budget: float | None = None
+    style_hints: list[str] = []
+    mandatory_services: list[str] = []
+    confidence: float = 0.0
+
+
+class StyleAnalysisResult(BaseModel):
+    """Resultado del análisis de imágenes de referencia de estilo."""
+    dominant_colors: list[str] = []
+    aesthetic_style: str = "otro"        # romántico, minimalista, rústico, elegante, moderno, bohemio
+    luxury_level: int = 3                # 1 (económico) a 5 (máximo lujo)
+    style_keywords: list[str] = []
+    confidence: float = 0.0
 
 
 class VisualAnalysisResult(BaseModel):

@@ -25,3 +25,4 @@ class Proposal(BaseModel):
     algorithm_used: str
     generated_at: datetime
     version: int
+    narrative: str = ""  # Descripción narrativa generada por Gemini (vacía si no disponible)

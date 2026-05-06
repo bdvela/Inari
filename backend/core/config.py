@@ -12,17 +12,21 @@ class Settings(BaseSettings):
     # Base de datos
     DATABASE_URL: str = "postgresql+asyncpg://user:pass@localhost/eventos_db"
 
-    # Anthropic (legacy — ya no se usa)
-    ANTHROPIC_API_KEY: str = ""
-
-    # Google Gemini (análisis visual)
+    # Sistema usa Google Gemini (GEMINI_API_KEY)
     GEMINI_API_KEY: str = ""
+
+    # CORS — origins permitidos separados por coma
+    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
     # Almacenamiento
     STORAGE_BUCKET: str = "eventos-referencias"
     STORAGE_BASE_URL: str = "http://localhost:8000"
     # "local" = disco local dev | "s3" | "supabase"
     STORAGE_BACKEND: str = "local"
+
+    # Supabase — requerido cuando STORAGE_BACKEND=supabase
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
 
     # Seguridad
     SECRET_KEY: str = "cambiar-en-produccion"
@@ -37,7 +41,7 @@ class Settings(BaseSettings):
     OPTIMIZER_ILP_MAX_COMBINATIONS: int = 500
 
     # Gemini vision model — usar nombre completo del SDK
-    VISION_MODEL: str = "gemini-2.5-flash-lite"
+    VISION_MODEL: str = "gemini-2.5-flash"
 
     # Porcentaje de presupuesto adicional para cotización premium
     PREMIUM_BUDGET_MULTIPLIER: float = 1.30

@@ -61,9 +61,10 @@ def run_ilp(inp: OptimizationInput) -> OptimizationResult:
             var_name = f"x_{sid}_{p.id}"
             x[(sid, p.id)] = pulp.LpVariable(var_name, cat="Binary")
 
-    # Función objetivo: maximizar calidad
+    # Función objetivo: maximizar calidad ponderada por quality_weight del estilo
+    qw = inp.quality_weight
     prob += pulp.lpSum(
-        p.quality_index * x[(sid, p.id)]
+        p.quality_index * qw * x[(sid, p.id)]
         for sid in all_services
         for p in eligible.get(sid, [])
         if (sid, p.id) in x
