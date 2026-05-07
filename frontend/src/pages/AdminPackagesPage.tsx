@@ -188,7 +188,7 @@ export default function AdminPackagesPage() {
 
       {/* Error */}
       {mutationError && (
-        <div className="card mb-6 border border-red-100 bg-red-50/50 flex items-center gap-3 py-4">
+        <div className="card mb-6 border border-danger/15 bg-danger/5 flex items-center gap-3 py-4">
           <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
           <span className="flex-1 text-sm text-red-600">{mutationError}</span>
           <button onClick={() => setMutationError(null)} className="btn-ghost py-1 px-2">
@@ -269,7 +269,7 @@ export default function AdminPackagesPage() {
                       </button>
                       <button
                         onClick={() => handleDelete(pkg.id, pkg.name)}
-                        className="p-2 text-text-muted hover:text-danger hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-text-muted hover:text-danger hover:bg-danger/8 rounded-lg transition-colors"
                         title="Eliminar"
                       >
                         <Trash2 size={14} />

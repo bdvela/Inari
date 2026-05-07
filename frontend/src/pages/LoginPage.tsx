@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowRight, Mail, Lock, AlertCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { quotationsApi } from '../services/api'
+import { toast } from 'sonner'
 
 const loginSchema = z.object({
   email:    z.string().email('Email inválido'),
@@ -31,6 +33,32 @@ export default function LoginPage() {
       setError(null)
       await login(data.email, data.password)
       const role = localStorage.getItem('user_role')
+
+      // Recuperar cotización pendiente de sesión guest
+      const pending = sessionStorage.getItem('pending_quotation')
+      if (pending && role !== 'admin') {
+        try {
+          sessionStorage.removeItem('pending_quotation')
+          const formData = JSON.parse(pending) as {
+            evento_tipo: string; evento_fecha: string
+            num_invitados: number; presupuesto_maximo: number
+            estilo?: string; descripcion?: string
+          }
+          toast.info('Generando tu cotización...')
+          const fd = new FormData()
+          Object.entries(formData).forEach(([k, v]) => {
+            if (v !== undefined && v !== '') fd.append(k, String(v))
+          })
+          const result = await quotationsApi.generate(fd)
+          const targetId = result.basica_factible ? result.quotation_basica_id : result.quotation_premium_id
+          toast.success('¡Cotización guardada!')
+          navigate(`/quotations/${targetId}`, { state: { result } })
+          return
+        } catch {
+          toast.error('No se pudo recuperar la cotización. Créala desde el dashboard.')
+        }
+      }
+
       navigate(role === 'admin' ? '/admin/providers' : '/dashboard')
     } catch {
       setError('Credenciales incorrectas. Verifica tu email y contraseña.')
@@ -46,16 +74,7 @@ export default function LoginPage() {
         style={{ padding: '48px 56px' }}
       >
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="logo-mark">I</span>
-          <span style={{
-            fontFamily: 'Syne, sans-serif', fontWeight: 800,
-            fontSize: 13, letterSpacing: '0.18em', lineHeight: 1.1, color: '#F2EFE9',
-          }}>
-            INARI<br/>
-            <span style={{ color: 'rgba(242,239,233,0.55)', fontWeight: 600 }}>GROUP</span>
-          </span>
-        </div>
+        <img src="/logo.png" alt="INARI GROUP SAC" style={{ width: 120, height: 120, objectFit: 'contain', alignSelf: 'flex-start', filter: 'brightness(0) invert(1)' }} />
 
         {/* Headline */}
         <div>
@@ -67,7 +86,7 @@ export default function LoginPage() {
             — Inari Group · Lima
           </div>
           <h1 style={{
-            fontFamily: 'Syne, sans-serif', fontWeight: 800,
+            fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 800,
             fontSize: 78, lineHeight: 0.98,
             margin: 0, color: '#F2EFE9', letterSpacing: '-0.035em',
           }}>
@@ -87,7 +106,7 @@ export default function LoginPage() {
           {STATS.map((s) => (
             <div key={s.l} className="glass-dark" style={{ flex: 1, padding: '18px 20px' }}>
               <div style={{
-                fontFamily: 'Syne, sans-serif', fontSize: 32, fontWeight: 800,
+                fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 32, fontWeight: 800,
                 color: '#F2EFE9', letterSpacing: '-0.02em', lineHeight: 1,
               }}>
                 {s.v}
@@ -111,21 +130,15 @@ export default function LoginPage() {
         <div className="glass-raised animate-fade-in" style={{ width: '100%', maxWidth: 420, padding: 40 }}>
 
           {/* Logo mobile */}
-          <div className="lg:hidden" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-            <span className="logo-mark">I</span>
-            <span style={{
-              fontFamily: 'Syne, sans-serif', fontWeight: 800,
-              fontSize: 13, letterSpacing: '0.18em', lineHeight: 1.1,
-            }}>
-              INARI<br/><span style={{ color: '#6E6E73', fontWeight: 600 }}>GROUP</span>
-            </span>
+          <div className="lg:hidden" style={{ marginBottom: 32 }}>
+            <img src="/logo.png" alt="INARI GROUP SAC" style={{ height: 60, width: 'auto' }} />
           </div>
 
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#E8572A', letterSpacing: '0.14em', marginBottom: 14 }}>
             ACCESO INTERNO
           </div>
           <h2 style={{
-            fontFamily: 'Syne, sans-serif', fontSize: 36, fontWeight: 700,
+            fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 36, fontWeight: 700,
             margin: 0, letterSpacing: '-0.025em', lineHeight: 1.05, color: '#1D1D1F',
           }}>
             Bienvenido<br/>de vuelta.

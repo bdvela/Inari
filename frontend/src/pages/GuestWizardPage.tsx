@@ -140,7 +140,7 @@ export default function GuestWizardPage() {
         return
       }
 
-      navigate('/propuesta', { state: { result, formData: data } })
+      navigate('/propuesta', { state: { result, formData: data, styleFiles: styleImages.map(i => i.file) } })
     } catch (err: unknown) {
       const msg = (err && typeof err === 'object' && 'response' in err)
         ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
@@ -163,10 +163,7 @@ export default function GuestWizardPage() {
       {/* Header minimal */}
       <div style={{ padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(26,23,20,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="logo-mark" style={{ width: 32, height: 32, fontSize: 14 }}>I</span>
-          <span style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.18em', color: '#1D1D1F' }}>
-            INARI GROUP
-          </span>
+          <img src="/logo.png" alt="INARI GROUP SAC" style={{ height: 48, width: "auto" }} />
         </div>
         <a href="/login" style={{ fontSize: 13, color: '#6E6E73', textDecoration: 'none' }}>
           ¿Ya tienes cuenta? <span style={{ color: '#E8572A', fontWeight: 600 }}>Inicia sesión</span>

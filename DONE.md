@@ -4,6 +4,48 @@ Fecha: 2026-04-28. Referencia: STATUS.md generado en misma sesión.
 
 ---
 
+## Sesión 10 — HU inferencia servicios desde imágenes (2026-05-06)
+
+### Spec
+`specs/HU-inferencia-servicios-desde-imagenes-referencia.md`
+
+### Módulo `backend/modules/visual_analysis/service_inference.py`
+- `merge_inferred_services(suggested, confidence, required, optional) → list[str]`
+- Umbral fijo 0.6 — por debajo retorna `[]`
+- Deduplicación contra `required_services` y `optional_services`
+- `_ALIAS_MAP` — mapea términos comunes fuera del catálogo al servicio más cercano
+  (ej: "DJ" → "musica", "ambientacion" → "decoracion", "show de baile" → "animacion")
+- Sin mapeo posible → descarta silenciosamente
+
+### Backend `quotations.py`
+- `extra_optional` inicializado en `[]` antes del análisis de estilo
+- Tras `evaluate_rules`, llama `merge_inferred_services` con `style_result.suggested_services`
+- `rule_result.optional_services` actualizado con los servicios inferidos válidos
+- `parametros_json` guarda `image_inferred_services` para trazabilidad
+- `get_quotation` expone `image_inferred_services` en el response
+- Response de `generate` incluye `image_inferred_services`
+
+### Prompts
+- `STYLE_ANALYSIS_SYSTEM_PROMPT` actualizado — ahora extrae `visual_elements` y `suggested_services`
+- `StyleAnalysisResult` schema: añadidos `visual_elements: list[str]` y `suggested_services: list[str]`
+
+### Frontend
+- `Quotation.image_inferred_services: string[]` en `types/index.ts`
+- `InferredServicesCard` en `QuotationResultPage` — vista ejecutivo con estado por servicio
+- Mensaje cliente: "Detectamos que podrías necesitar: X, Y" (solo para rol cliente)
+- `StyleAnalysisCard` ya existente complementa con elementos decorativos y paleta
+
+### Decisión de diseño
+- Servicios inferidos = opcionales siempre. El optimizer los descarta si no hay presupuesto.
+- Umbral 0.6 no configurable en esta versión — evita complejidad sin caso de uso claro aún.
+- No se re-aplica en reproceso manual — el ejecutivo controla qué servicios incluir al ajustar.
+
+### Tests
+- 15 tests nuevos en `test_hu_inferencia_servicios.py` — todos GREEN
+- **200 tests totales pasando. tsc: 0 errores.**
+
+---
+
 ## Sesión 9 — Rediseño visual completo (2026-05-06)
 
 ### Backend

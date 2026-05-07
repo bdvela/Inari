@@ -35,27 +35,35 @@ def _call_gemini_text_sync(description: str) -> str:
                 parts=[types.Part.from_text(text=prompt)],
             )
         ],
-        config=types.GenerateContentConfig(temperature=0.1, max_output_tokens=1024),
+        config=types.GenerateContentConfig(
+            temperature=0.1,
+            max_output_tokens=4096,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
     )
     return response.text
 
 
 def _extract_json(raw: str) -> dict:
     raw = raw.strip()
+    # 1. Respuesta es JSON puro
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
         pass
-    match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw, re.DOTALL)
+    # 2. Markdown code block — regex greedy para manejar JSON anidado
+    match = re.search(r'```(?:json)?\s*(\{.*\})\s*```', raw, re.DOTALL)
     if match:
         try:
             return json.loads(match.group(1))
         except json.JSONDecodeError:
             pass
-    match = re.search(r'\{.*\}', raw, re.DOTALL)
-    if match:
+    # 3. Cualquier objeto JSON en el texto — tomar desde primer { hasta último }
+    start = raw.find('{')
+    end = raw.rfind('}')
+    if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(match.group())
+            return json.loads(raw[start:end + 1])
         except json.JSONDecodeError:
             pass
     raise ValueError(f"No JSON en respuesta: {raw[:200]}")

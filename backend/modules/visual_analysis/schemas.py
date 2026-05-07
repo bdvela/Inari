@@ -21,6 +21,8 @@ class StyleAnalysisResult(BaseModel):
     aesthetic_style: str = "otro"        # romántico, minimalista, rústico, elegante, moderno, bohemio
     luxury_level: int = 3                # 1 (económico) a 5 (máximo lujo)
     style_keywords: list[str] = []
+    visual_elements: list[str] = []      # elementos decorativos detectados
+    suggested_services: list[str] = []  # servicios inferidos de las imágenes
     confidence: float = 0.0
 
 

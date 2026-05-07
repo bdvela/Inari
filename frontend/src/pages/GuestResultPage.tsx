@@ -3,9 +3,14 @@
  * Muestra el preview (sin guardar) y ofrece registro para enviar a INARI.
  */
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { CheckCircle, Star, Send, ChevronDown, ChevronUp } from 'lucide-react'
+import { CheckCircle, Star, Send, ChevronDown, ChevronUp, X, Mail, Lock, Loader2, ArrowRight } from 'lucide-react'
 import RegisterWithQuotationModal from '../components/RegisterWithQuotationModal'
+import { authApi, quotationsApi } from '../services/api'
+import { useAuth } from '../context/AuthContext'
+import { toast } from 'sonner'
+import type { AuthToken } from '../types'
 
 const EVENT_LABELS: Record<string, string> = {
   boda: 'Boda', corporativo: 'Corporativo', cumpleanos: 'Cumpleaños',
@@ -51,13 +56,102 @@ interface FormData {
 
 type ActiveNivel = 'basica' | 'premium'
 
+interface LoginModalProps {
+  onClose: () => void
+  onSuccess: () => void
+}
+
+function LoginModal({ onClose, onSuccess }: LoginModalProps) {
+  const { loginWithToken } = useAuth()
+  const [email, setEmail]       = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState<string | null>(null)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await authApi.login(email, password)
+      loginWithToken(data as AuthToken)
+      onSuccess()
+    } catch {
+      setError('Credenciales incorrectas.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return createPortal(
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(26,23,20,0.6)', backdropFilter: 'blur(8px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="glass-raised rounded-2xl animate-slide-up w-full mx-4"
+        style={{ maxWidth: 400, padding: 32 }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="font-display text-2xl font-bold">Inicia sesión</h2>
+            <p className="text-text-secondary text-sm mt-1">Tu cotización se guardará automáticamente.</p>
+          </div>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary p-1 rounded-lg transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {error && <div className="alert alert-danger">{error}</div>}
+
+          <div>
+            <label className="label">Email</label>
+            <div className="relative">
+              <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+              <input
+                type="email" required value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="input w-full" style={{ paddingLeft: '2.2rem' }}
+                placeholder="tu@email.com"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Contraseña</label>
+            <div className="relative">
+              <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+              <input
+                type="password" required value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="input w-full" style={{ paddingLeft: '2.2rem' }}
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+
+          <button type="submit" disabled={loading} className="btn btn-primary w-full" style={{ marginTop: 4 }}>
+            {loading
+              ? <><Loader2 size={15} className="animate-spin" /> Ingresando...</>
+              : <><ArrowRight size={15} /> Ingresar y guardar cotización</>}
+          </button>
+        </form>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 export default function GuestResultPage() {
   const location = useLocation()
-  const navigate = useNavigate()
-  const state = location.state as { result: PreviewResult; formData: FormData } | null
+  const navigate  = useNavigate()
+  const state = location.state as { result: PreviewResult; formData: FormData; styleFiles?: File[] } | null
 
-  const [showModal, setShowModal] = useState(false)
-  const [activeNivel, setActiveNivel] = useState<ActiveNivel>('premium' as ActiveNivel)
+  const [showModal, setShowModal]           = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [activeNivel, setActiveNivel]       = useState<ActiveNivel>('premium' as ActiveNivel)
   const [showBasicDetails, setShowBasicDetails] = useState(false)
 
   if (!state?.result) {
@@ -74,13 +168,32 @@ export default function GuestResultPage() {
     )
   }
 
-  const { result, formData } = state
+  const { result, formData, styleFiles = [] } = state
   const active = result[activeNivel]
   const eventLabel = EVENT_LABELS[result.evento_tipo] ?? result.evento_tipo
   const fecha = new Date(result.evento_fecha + 'T12:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })
 
   const handleRegistered = (quotationId: number) => {
     navigate(`/quotations/${quotationId}`)
+  }
+
+  const handleLoginSuccess = async () => {
+    setShowLoginModal(false)
+    try {
+      toast.info('Guardando tu cotización...')
+      const fd = new FormData()
+      Object.entries(formData).forEach(([k, v]) => {
+        if (v !== undefined && v !== '') fd.append(k, String(v))
+      })
+      styleFiles.forEach(f => fd.append('style_images', f))
+      const res = await quotationsApi.generate(fd)
+      const targetId = res.basica_factible ? res.quotation_basica_id : res.quotation_premium_id
+      toast.success('¡Cotización guardada!')
+      navigate(`/quotations/${targetId}`, { state: { result: res } })
+    } catch {
+      toast.error('No se pudo guardar la cotización. Créala desde el dashboard.')
+      navigate('/dashboard')
+    }
   }
 
   return (
@@ -90,14 +203,14 @@ export default function GuestResultPage() {
       {/* Header */}
       <div style={{ padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(26,23,20,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="logo-mark" style={{ width: 32, height: 32, fontSize: 14 }}>I</span>
-          <span style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.18em', color: '#1D1D1F' }}>
-            INARI GROUP
-          </span>
+          <img src="/logo.png" alt="INARI GROUP SAC" style={{ height: 48, width: "auto" }} />
         </div>
-        <a href="/login" style={{ fontSize: 13, color: '#6E6E73', textDecoration: 'none' }}>
+        <button
+          style={{ fontSize: 13, color: '#6E6E73', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          onClick={() => setShowLoginModal(true)}
+        >
           ¿Ya tienes cuenta? <span style={{ color: '#E8572A', fontWeight: 600 }}>Inicia sesión</span>
-        </a>
+        </button>
       </div>
 
       <div className="max-w-[900px] mx-auto px-6 py-10">
@@ -250,9 +363,14 @@ export default function GuestResultPage() {
             estilo: formData.estilo,
             descripcion: formData.descripcion,
           }}
+          styleFiles={styleFiles}
           onSuccess={handleRegistered}
           onClose={() => setShowModal(false)}
         />
+      )}
+
+      {showLoginModal && (
+        <LoginModal onClose={() => setShowLoginModal(false)} onSuccess={handleLoginSuccess} />
       )}
     </div>
   )

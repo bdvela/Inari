@@ -103,13 +103,11 @@ class QuotationSummary(BaseModel):
 
 
 @router.post("/parse-description", response_model=ParsedDescription)
-async def parse_event_description(
-    body: ParseDescriptionRequest,
-    _: User = Depends(get_current_user),
-):
+async def parse_event_description(body: ParseDescriptionRequest):
     """
-    Extrae parámetros de evento desde descripción libre del cliente.
-    Usa Gemini para interpretar lenguaje natural. Nunca lanza excepción — siempre retorna JSON.
+    Extrae parámetros de evento desde descripción libre.
+    Público — usado por wizard de guests y usuarios autenticados.
+    Usa Gemini para interpretar lenguaje natural. Nunca lanza excepción.
     """
     return await parse_description(body.description)
 
@@ -664,6 +662,7 @@ async def list_my_quotations(
                 if q.parametros_json and q.parametros_json.get("cliente_nombre_manual")
                 else (q.cliente.nombre if q.cliente else None)
             ),
+            "evento_fecha": q.evento.fecha.isoformat() if q.evento else None,
         }
         for q in quotations
     ]

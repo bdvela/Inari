@@ -32,11 +32,12 @@ interface Props {
     estilo?: string
     descripcion?: string
   }
+  styleFiles?: File[]
   onSuccess: (quotationId: number) => void
   onClose: () => void
 }
 
-export default function RegisterWithQuotationModal({ eventoData, onSuccess, onClose }: Props) {
+export default function RegisterWithQuotationModal({ eventoData, styleFiles = [], onSuccess, onClose }: Props) {
   const { loginWithToken } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -48,10 +49,12 @@ export default function RegisterWithQuotationModal({ eventoData, onSuccess, onCl
   const onSubmit = async (data: FormData) => {
     setServerError(null)
     try {
-      const result = await authApi.registerAndQuote({
-        ...data,
-        ...eventoData,
+      const fd = new FormData()
+      Object.entries({ ...data, ...eventoData }).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') fd.append(k, String(v))
       })
+      styleFiles.forEach(f => fd.append('style_images', f))
+      const result = await authApi.registerAndQuote(fd as unknown as Parameters<typeof authApi.registerAndQuote>[0])
       // Autenticar al usuario
       loginWithToken(result as unknown as AuthToken)
       // Navegar a la cotización guardada
@@ -81,8 +84,7 @@ export default function RegisterWithQuotationModal({ eventoData, onSuccess, onCl
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span className="logo-mark" style={{ width: 28, height: 28, fontSize: 12 }}>I</span>
-              <span style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 700, fontSize: 11, letterSpacing: '0.18em', color: '#1D1D1F' }}>INARI GROUP</span>
+              <img src="/logo.png" alt="INARI GROUP SAC" style={{ height: 40, width: "auto" }} />
             </div>
             <h2 className="font-display text-2xl font-bold tracking-tight">Envía tu propuesta</h2>
             <p className="text-text-secondary text-sm mt-1">
@@ -105,7 +107,7 @@ export default function RegisterWithQuotationModal({ eventoData, onSuccess, onCl
 
           <div>
             <label className="label">Nombre completo</label>
-            <input {...register('nombre')} className="input w-full" placeholder="María García López" />
+            <input {...register('nombre')} className="input w-full" placeholder="María García López" autoFocus />
             {errors.nombre && <p className="text-danger text-xs mt-1.5">{errors.nombre.message}</p>}
           </div>
 

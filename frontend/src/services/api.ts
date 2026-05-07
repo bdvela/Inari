@@ -59,28 +59,28 @@ export const authApi = {
     role?: string
   }) => http.post<AuthToken>('/auth/register', data).then((r) => r.data),
 
-  registerAndQuote: (data: {
-    nombre: string
-    email: string
-    telefono_whatsapp: string
-    password: string
-    mensaje?: string
-    evento_tipo: string
-    evento_fecha: string
-    num_invitados: number
-    presupuesto_maximo: number
-    estilo?: string
-    descripcion?: string
-  }) => http.post<{
-    access_token: string
-    user_id: number
-    role: string
-    nombre: string
-    quotation_basica_id: number | null
-    quotation_premium_id: number | null
-    basica_factible: boolean
-    premium_factible: boolean
-  }>('/auth/register-and-quote', data).then((r) => r.data),
+  getProfile: () =>
+    http.get<{ id: number; nombre: string | null; email: string; telefono: string | null; role: string }>('/auth/me').then((r) => r.data),
+
+  updateProfile: (data: { nombre?: string; telefono?: string }) =>
+    http.patch<{ id: number; nombre: string | null; email: string; telefono: string | null; role: string }>('/auth/me', data).then((r) => r.data),
+
+  changePassword: (data: { current_password: string; new_password: string }) =>
+    http.post('/auth/me/change-password', data).then((r) => r.data),
+
+  registerAndQuote: (data: FormData) =>
+    http.post<{
+      access_token: string
+      user_id: number
+      role: string
+      nombre: string
+      quotation_basica_id: number | null
+      quotation_premium_id: number | null
+      basica_factible: boolean
+      premium_factible: boolean
+    }>('/auth/register-and-quote', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data),
 }
 
 // Guest preview (sin auth)

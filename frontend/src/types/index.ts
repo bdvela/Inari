@@ -134,6 +134,7 @@ export interface QuotationSummary {
   evento_id: number
   evento_tipo: EventType
   evento_nombre: string
+  evento_fecha: string | null
   cliente_nombre: string | null
 }
 

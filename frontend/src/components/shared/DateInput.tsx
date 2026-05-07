@@ -59,18 +59,19 @@ export default function DateInput({
         className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none"
       />
       <input
-        className="input w-full pl-9"
+        className="input w-full"
         placeholder={placeholder}
         value={display}
         onChange={handleChange}
         maxLength={10}
         inputMode="numeric"
         style={isAiDetected ? {
+          paddingLeft: '2.25rem',
           background: 'rgba(232,87,42,0.04)',
           borderColor: 'rgba(232,87,42,0.20)',
           color: '#C94A1F',
           fontWeight: 500,
-        } : {}}
+        } : { paddingLeft: '2.25rem' }}
       />
     </div>
   )

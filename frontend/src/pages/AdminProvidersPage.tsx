@@ -14,7 +14,7 @@ const EVENT_LABELS: Record<string, string> = {
 
 function QualityBar({ value }: { value: number }) {
   const pct  = Math.round(value * 100)
-  const fill = pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-accent' : 'bg-orange-400'
+  const fill = pct >= 80 ? 'bg-ok' : pct >= 50 ? 'bg-accent' : 'bg-amber'
   return (
     <div className="flex items-center gap-2">
       <div className="w-20 h-1.5 bg-border/40 rounded-full overflow-hidden">
@@ -214,7 +214,7 @@ export default function AdminProvidersPage() {
 
       {/* Error alert */}
       {mutationError && (
-        <div className="card mb-6 border border-red-100 bg-red-50/50 flex items-center gap-3 py-4">
+        <div className="card mb-6 border border-danger/15 bg-danger/5 flex items-center gap-3 py-4">
           <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
           <span className="flex-1 text-sm text-red-600">{mutationError}</span>
           <button onClick={() => setMutationError(null)} className="btn-ghost py-1 px-2">
@@ -331,7 +331,7 @@ export default function AdminProvidersPage() {
                           </button>
                           <button
                             onClick={() => handleDelete(p.id, p.nombre)}
-                            className="p-2 text-text-muted hover:text-danger hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-2 text-text-muted hover:text-danger hover:bg-danger/8 rounded-lg transition-colors"
                             title="Eliminar"
                           >
                             <Trash2 size={14} />

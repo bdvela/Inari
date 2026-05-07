@@ -38,7 +38,11 @@ def _call_gemini_style_sync(images_with_mime: list[tuple[bytes, str]]) -> str:
     response = client.models.generate_content(
         model=settings.VISION_MODEL,
         contents=[types.Content(role="user", parts=parts)],
-        config=types.GenerateContentConfig(temperature=0.1, max_output_tokens=1024),
+        config=types.GenerateContentConfig(
+            temperature=0.1,
+            max_output_tokens=4096,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
     )
     return response.text
 
@@ -49,16 +53,17 @@ def _extract_json(raw: str) -> dict:
         return json.loads(raw)
     except json.JSONDecodeError:
         pass
-    match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw, re.DOTALL)
+    match = re.search(r'```(?:json)?\s*(\{.*\})\s*```', raw, re.DOTALL)
     if match:
         try:
             return json.loads(match.group(1))
         except json.JSONDecodeError:
             pass
-    match = re.search(r'\{.*\}', raw, re.DOTALL)
-    if match:
+    start = raw.find('{')
+    end = raw.rfind('}')
+    if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(match.group())
+            return json.loads(raw[start:end + 1])
         except json.JSONDecodeError:
             pass
     raise ValueError(f"No JSON en respuesta: {raw[:200]}")
@@ -107,6 +112,8 @@ async def analyze_style_references(
             aesthetic_style=parsed.get("aesthetic_style", "otro"),
             luxury_level=luxury,
             style_keywords=parsed.get("style_keywords", []),
+            visual_elements=parsed.get("visual_elements", []),
+            suggested_services=parsed.get("suggested_services", []),
             confidence=float(parsed.get("confidence", 0.5)),
         )
     except Exception as exc:

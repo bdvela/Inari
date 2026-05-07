@@ -57,7 +57,7 @@ export default function App() {
         {/* Protected — inside Layout */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/quotations/new" element={<NewQuotationPage />} />
+<Route path="/quotations/new" element={<NewQuotationPage />} />
           <Route path="/quotations/:id" element={<QuotationResultPage />} />
           <Route
             path="/admin/providers"

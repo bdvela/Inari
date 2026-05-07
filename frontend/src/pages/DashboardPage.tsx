@@ -4,14 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import {
   PlusCircle, AlertCircle, CheckCircle, Clock,
   BarChart2, Star, TrendingUp, Search, ArrowUpRight,
-  Lock,
+  Lock, RefreshCw, Calendar, ChevronRight, LayoutGrid, List,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { quotationsApi } from '../services/api'
 import type { QuotationSummary } from '../types'
 import QualityBar from '../components/shared/QualityBar'
 
-// ── Sub-components ─────────────────────────────────────────────
+// ── Sub-components ────────────────────────────────────────────
 
 function StatusBadge({ estado }: { estado: QuotationSummary['estado'] }) {
   const config = {
@@ -29,12 +29,9 @@ function LevelBadge({ nivel }: { nivel: QuotationSummary['nivel'] }) {
     : <span className="badge badge-neutral">Básica</span>
 }
 
-function EventLabel({ tipo }: { tipo: string }) {
-  const labels: Record<string, string> = {
-    boda: 'Boda', corporativo: 'Corporativo', cumpleanos: 'Cumpleaños',
-    quinceanos: 'Quinceañera', conferencia: 'Conferencia', otro: 'Otro',
-  }
-  return <span style={{ fontSize: 14, color: '#6E6E73' }}>{labels[tipo] ?? tipo}</span>
+const EVENT_LABELS: Record<string, string> = {
+  boda: 'Boda', corporativo: 'Corporativo', cumpleanos: 'Cumpleaños',
+  quinceanos: 'Quinceañera', conferencia: 'Conferencia', otro: 'Otro',
 }
 
 function StatCard({
@@ -44,50 +41,238 @@ function StatCard({
   icon: React.ElementType; accent?: boolean
 }) {
   return (
-    <div className="glass card-hover" style={{ padding: 24, position: 'relative', minHeight: 132 }}>
-      <div style={{
-        position: 'absolute', top: 18, right: 18,
-        width: 38, height: 38, borderRadius: 10,
-        background: accent ? 'rgba(232,87,42,0.10)' : 'rgba(26,23,20,0.05)',
-        color: accent ? '#E8572A' : '#6E6E73',
-        border: `1px solid ${accent ? 'rgba(232,87,42,0.18)' : 'rgba(26,23,20,0.08)'}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <Icon size={18} />
+    <div className="glass card-hover card-lift p-6 relative" style={{ minHeight: 128 }}>
+      <div className={`absolute top-4 right-4 w-9 h-9 rounded-xl flex items-center justify-center border ${
+        accent
+          ? 'bg-accent/10 text-accent border-accent/18'
+          : 'bg-text-primary/5 text-text-secondary border-border'
+      }`}>
+        <Icon size={17} />
       </div>
-      <div style={{
-        fontSize: 12, color: '#6E6E73', fontWeight: 500,
-        letterSpacing: '0.04em', textTransform: 'uppercase' as const,
-      }}>
-        {label}
-      </div>
-      <div style={{ marginTop: 14, display: 'flex', alignItems: 'baseline', gap: 4 }}>
-        <span style={{
-          fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 44,
-          fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, color: '#1D1D1F',
-        }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary mb-3">{label}</p>
+      <div className="flex items-baseline gap-1.5">
+        <span className="font-display text-5xl font-bold tracking-tight leading-none text-text-primary">
           {value}
         </span>
-        {suffix && (
-          <span style={{ fontSize: 14, color: '#AEAEB2', fontWeight: 500 }}>{suffix}</span>
-        )}
+        {suffix && <span className="text-sm text-text-muted font-medium">{suffix}</span>}
       </div>
     </div>
+  )
+}
+
+function StatCardSkeleton() {
+  return (
+    <div className="glass p-6" style={{ minHeight: 128 }}>
+      <div className="skeleton h-3 w-2/5 mb-4 rounded" />
+      <div className="skeleton h-10 w-1/3 rounded" />
+    </div>
+  )
+}
+
+function QuotationCard({ q, isStaff, onClick }: { q: QuotationSummary; isStaff: boolean; onClick: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      className="glass card-hover p-4 rounded-xl cursor-pointer border border-transparent hover:border-accent/15 transition-all"
+    >
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-text-primary/6 flex items-center justify-center text-[11px] font-semibold text-text-primary flex-shrink-0">
+            {q.evento_nombre.split(' ').map((s: string) => s[0]).slice(0,2).join('')}
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm text-text-primary truncate">{q.evento_nombre}</p>
+            {isStaff && q.cliente_nombre && (
+              <p className="text-xs text-text-muted truncate">{q.cliente_nombre}</p>
+            )}
+          </div>
+        </div>
+        <ArrowUpRight size={14} className="text-accent flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <StatusBadge estado={q.estado} />
+        <LevelBadge nivel={q.nivel} />
+        <span className="text-xs text-text-muted">{EVENT_LABELS[q.evento_tipo] ?? q.evento_tipo}</span>
+      </div>
+      {q.costo_total != null && (
+        <p className="font-mono text-sm font-semibold text-text-primary mt-2">
+          S/ {q.costo_total.toLocaleString('es-PE', { minimumFractionDigits: 0 })}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── Client event helpers ──────────────────────────────────────
+
+const EVENT_ICONS: Record<string, string> = {
+  boda: '💍', corporativo: '🏢', cumpleanos: '🎂',
+  quinceanos: '👑', conferencia: '🎤', otro: '✨',
+}
+
+interface EventGroup {
+  evento_id: number
+  evento_tipo: string
+  evento_fecha: string | null
+  created_at: string
+  basica: QuotationSummary | null
+  premium: QuotationSummary | null
+}
+
+function groupByEvent(quotations: QuotationSummary[]): EventGroup[] {
+  const map = new Map<number, EventGroup>()
+  for (const q of quotations) {
+    if (!map.has(q.evento_id)) {
+      map.set(q.evento_id, {
+        evento_id: q.evento_id,
+        evento_tipo: q.evento_tipo,
+        evento_fecha: q.evento_fecha ?? null,
+        created_at: q.created_at,
+        basica: null,
+        premium: null,
+      })
+    }
+    const g = map.get(q.evento_id)!
+    if (q.nivel === 'premium') g.premium = q
+    else g.basica = q
+  }
+  return Array.from(map.values())
+}
+
+function eventFecha(g: EventGroup) {
+  const raw = g.evento_fecha ? g.evento_fecha + 'T12:00:00' : g.created_at
+  return new Date(raw).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function costRange(g: EventGroup): string {
+  const costs = [g.basica?.costo_total, g.premium?.costo_total].filter((c): c is number => c != null)
+  if (!costs.length) return '—'
+  if (costs.length === 1) return `S/ ${costs[0].toLocaleString('es-PE', { minimumFractionDigits: 0 })}`
+  return `S/ ${Math.min(...costs).toLocaleString('es-PE', { minimumFractionDigits: 0 })} — S/ ${Math.max(...costs).toLocaleString('es-PE', { minimumFractionDigits: 0 })}`
+}
+
+function overallStatus(g: EventGroup): QuotationSummary['estado'] {
+  if (g.premium?.estado === 'completado' || g.basica?.estado === 'completado') return 'completado'
+  if (g.premium?.estado === 'procesando' || g.basica?.estado === 'procesando') return 'procesando'
+  return 'error'
+}
+
+function navigateTarget(g: EventGroup): number {
+  return (g.premium ?? g.basica)!.id
+}
+
+// Card view
+function ClientEventCard({ group, onNavigate }: { group: EventGroup; onNavigate: (id: number) => void }) {
+  const label  = EVENT_LABELS[group.evento_tipo] ?? group.evento_tipo
+  const icon   = EVENT_ICONS[group.evento_tipo]  ?? '✨'
+  const hasBoth = !!(group.basica && group.premium)
+
+  return (
+    <button
+      onClick={() => onNavigate(navigateTarget(group))}
+      className="glass text-left group border border-transparent hover:border-accent/25 transition-all w-full"
+      style={{ borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+    >
+      {/* Accent top bar */}
+      <div style={{ height: 3, flexShrink: 0, background: 'linear-gradient(90deg, #E8572A, #FF8C42)' }} />
+
+      <div style={{ padding: '20px 22px 18px', flex: 1, display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+        {/* Row 1: big emoji */}
+        <div style={{ fontSize: 36, lineHeight: 1, marginBottom: 12 }}>{icon}</div>
+
+        {/* Row 2: event label */}
+        <p className="font-display font-bold text-text-primary" style={{ fontSize: 22, lineHeight: 1.1, marginBottom: 6 }}>
+          {label}
+        </p>
+
+        {/* Row 3: date */}
+        <div className="flex items-center gap-1.5" style={{ marginBottom: 16 }}>
+          <Calendar size={11} className="text-text-muted flex-shrink-0" />
+          <span className="text-xs text-text-muted" style={{ whiteSpace: 'nowrap' }}>{eventFecha(group)}</span>
+        </div>
+
+        {/* Divider */}
+        <div style={{ borderTop: '1px solid var(--color-border)', marginBottom: 14 }} />
+
+        {/* Row 4: cost label */}
+        <p className="text-text-muted font-semibold uppercase" style={{ fontSize: 10, letterSpacing: '0.1em', marginBottom: 4 }}>
+          {hasBoth ? 'Rango de inversión' : 'Inversión estimada'}
+        </p>
+
+        {/* Row 5: cost value */}
+        <p className="font-mono font-bold text-text-primary" style={{ fontSize: 17, lineHeight: 1, marginBottom: 14, whiteSpace: 'nowrap' }}>
+          {costRange(group)}
+        </p>
+
+        {/* Row 6: status + arrow */}
+        <div className="flex items-center justify-between gap-2" style={{ marginTop: 'auto' }}>
+          <StatusBadge estado={overallStatus(group)} />
+          <ChevronRight size={14} className="text-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+
+      </div>
+    </button>
+  )
+}
+
+// Row view
+function ClientEventRow({ group, onNavigate }: { group: EventGroup; onNavigate: (id: number) => void }) {
+  const label = EVENT_LABELS[group.evento_tipo] ?? group.evento_tipo
+  const icon  = EVENT_ICONS[group.evento_tipo]  ?? '✨'
+
+  return (
+    <button
+      onClick={() => onNavigate(navigateTarget(group))}
+      className="w-full text-left flex items-center gap-4 border-b border-border last:border-0 hover:bg-text-primary/3 transition-colors group"
+      style={{ padding: '14px 20px' }}
+    >
+      {/* emoji */}
+      <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 32, textAlign: 'center' }}>{icon}</span>
+
+      {/* name + date — always visible */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p className="font-semibold text-text-primary" style={{ fontSize: 14 }}>{label}</p>
+        <p className="text-text-muted" style={{ fontSize: 12, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {eventFecha(group)}
+        </p>
+      </div>
+
+      {/* nivel badges — hide on mobile */}
+      <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
+        {group.basica  && <span className="badge badge-neutral" style={{ fontSize: 10 }}>Básica</span>}
+        {group.premium && <span className="badge badge-accent"  style={{ fontSize: 10 }}>★ Premium</span>}
+      </div>
+
+      {/* cost — hide on small */}
+      <p className="font-mono font-bold text-text-primary hidden md:block flex-shrink-0" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
+        {costRange(group)}
+      </p>
+
+      {/* status */}
+      <div className="flex-shrink-0 hidden sm:block">
+        <StatusBadge estado={overallStatus(group)} />
+      </div>
+
+      <ChevronRight size={14} className="text-accent flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </button>
   )
 }
 
 // ── Page ──────────────────────────────────────────────────────
 
 const FILTERS = ['Todas', 'Boda', 'Corporativo', 'Quinceañera', 'Otros']
+const GRID_STAFF = '1.6fr 1fr 0.9fr 0.9fr 0.9fr 1.1fr 140px 32px'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { role, nombre } = useAuth()
   const isStaff = role === 'ejecutivo' || role === 'admin'
 
-  const [search, setSearch]         = useState('')
+  const [search, setSearch]             = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('')
   const [activeFilter, setActiveFilter] = useState('Todas')
+  const [viewMode, setViewMode]         = useState<'card' | 'row'>('card')
 
   const { data: quotations, isLoading, isError, refetch } = useQuery({
     queryKey: ['quotations'],
@@ -97,6 +282,7 @@ export default function DashboardPage() {
   const { data: stats } = useQuery({
     queryKey: ['stats'],
     queryFn:  quotationsApi.getStats,
+    enabled:  isStaff,
   })
 
   const filtered = useMemo(() => {
@@ -106,275 +292,365 @@ export default function DashboardPage() {
         q.evento_nombre.toLowerCase().includes(search.toLowerCase()) ||
         (isStaff && q.cliente_nombre?.toLowerCase().includes(search.toLowerCase()))
       const matchEstado = !filterEstado || q.estado === filterEstado
-      return matchSearch && matchEstado
+      const matchFilter = activeFilter === 'Todas' ||
+        (activeFilter === 'Boda' && q.evento_tipo === 'boda') ||
+        (activeFilter === 'Corporativo' && q.evento_tipo === 'corporativo') ||
+        (activeFilter === 'Quinceañera' && q.evento_tipo === 'quinceanos') ||
+        (activeFilter === 'Otros' && !['boda','corporativo','quinceanos'].includes(q.evento_tipo))
+      return matchSearch && matchEstado && matchFilter
     })
-  }, [quotations, search, filterEstado, isStaff])
+  }, [quotations, search, filterEstado, activeFilter, isStaff])
 
-  const qualityPct = stats?.quality_score_promedio != null
-    ? stats.quality_score_promedio * 100
-    : 0
+  const qualityPct = stats?.quality_score_promedio != null ? stats.quality_score_promedio * 100 : 0
+  const firstName  = nombre ? nombre.split(' ')[0] : 'equipo'
 
-  const firstName = nombre ? nombre.split(' ')[0] : 'equipo'
+  // ── CLIENT VIEW ──────────────────────────────────────────────
+  const eventGroups = useMemo(() => groupByEvent(quotations ?? []), [quotations])
 
+  if (!isStaff) {
+    return (
+      <div className="mesh" style={{ minHeight: '100vh', padding: 'clamp(24px, 5vw, 48px) clamp(16px, 4vw, 40px) 64px' }}>
+        <div className="mesh-blob" />
+
+        {/* Header */}
+        <div className="flex items-start justify-between mb-10 gap-4 flex-wrap">
+          <div>
+            <p className="page-eyebrow">Mi panel</p>
+            <h1 className="font-display text-5xl font-bold tracking-tight leading-none text-text-primary">
+              Hola, {firstName}.
+            </h1>
+            <p className="mt-2.5 text-[15px] text-text-secondary">
+              {eventGroups.length
+                ? `${eventGroups.length} evento${eventGroups.length !== 1 ? 's' : ''} cotizado${eventGroups.length !== 1 ? 's' : ''}.`
+                : 'Genera tu primera propuesta gratis.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* view toggle — only show when there's content */}
+            {eventGroups.length > 0 && (
+              <div className="flex items-center glass rounded-xl p-1 gap-0.5">
+                <button
+                  onClick={() => setViewMode('card')}
+                  title="Vista tarjetas"
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'card' ? 'bg-accent/12 text-accent' : 'text-text-muted hover:text-text-primary'}`}
+                >
+                  <LayoutGrid size={15} />
+                </button>
+                <button
+                  onClick={() => setViewMode('row')}
+                  title="Vista lista"
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'row' ? 'bg-accent/12 text-accent' : 'text-text-muted hover:text-text-primary'}`}
+                >
+                  <List size={15} />
+                </button>
+              </div>
+            )}
+            <button className="btn btn-primary" onClick={() => navigate('/quotations/new')}>
+              <PlusCircle size={15} /> Nueva cotización
+            </button>
+          </div>
+        </div>
+
+        {/* Error */}
+        {isError && (
+          <div className="alert alert-danger mb-6">
+            <AlertCircle size={15} className="flex-shrink-0" />
+            <span className="flex-1">No se pudieron cargar tus propuestas.</span>
+            <button className="btn btn-ghost btn-sm" onClick={() => refetch()}>
+              <RefreshCw size={13} /> Reintentar
+            </button>
+          </div>
+        )}
+
+        {/* Loading */}
+        {isLoading && (
+          <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} className="glass" style={{ borderRadius: 18, overflow: 'hidden' }}>
+                <div className="skeleton" style={{ height: 3 }} />
+                <div style={{ padding: '20px 22px 18px' }}>
+                  <div className="skeleton rounded" style={{ width: 36, height: 36, marginBottom: 12 }} />
+                  <div className="skeleton rounded" style={{ width: '55%', height: 22, marginBottom: 8 }} />
+                  <div className="skeleton rounded" style={{ width: '70%', height: 12, marginBottom: 18 }} />
+                  <div className="skeleton" style={{ height: 1, marginBottom: 14 }} />
+                  <div className="skeleton rounded" style={{ width: '40%', height: 10, marginBottom: 6 }} />
+                  <div className="skeleton rounded" style={{ width: '75%', height: 20, marginBottom: 16 }} />
+                  <div className="flex gap-2">
+                    <div className="skeleton rounded-full" style={{ width: 52, height: 20 }} />
+                    <div className="skeleton rounded-full" style={{ width: 68, height: 20 }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty */}
+        {!isLoading && eventGroups.length === 0 && (
+          <div className="glass p-16 text-center" style={{ maxWidth: 480, margin: '0 auto' }}>
+            <div style={{ fontSize: 52, marginBottom: 20 }}>✨</div>
+            <h3 className="font-display text-2xl font-bold tracking-tight mb-3">
+              Tu primera propuesta en minutos
+            </h3>
+            <p className="text-sm text-text-secondary max-w-xs mx-auto mb-8 leading-relaxed">
+              Cuéntanos sobre tu evento y recibirás una propuesta personalizada con proveedores reales y precios reales.
+            </p>
+            <button className="btn btn-primary btn-lg" onClick={() => navigate('/quotations/new')}>
+              <PlusCircle size={16} /> Crear cotización
+            </button>
+          </div>
+        )}
+
+        {/* Card view */}
+        {!isLoading && eventGroups.length > 0 && viewMode === 'card' && (
+          <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' }}>
+            {eventGroups.map(group => (
+              <ClientEventCard
+                key={group.evento_id}
+                group={group}
+                onNavigate={(id) => navigate(`/quotations/${id}`)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Row view */}
+        {!isLoading && eventGroups.length > 0 && viewMode === 'row' && (
+          <div className="glass" style={{ borderRadius: 16, overflow: 'hidden' }}>
+            {eventGroups.map(group => (
+              <ClientEventRow
+                key={group.evento_id}
+                group={group}
+                onNavigate={(id) => navigate(`/quotations/${id}`)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── STAFF VIEW ───────────────────────────────────────────────
   return (
     <div className="mesh" style={{ minHeight: '100vh', padding: '40px 48px 64px' }}>
       <div className="mesh-blob" />
 
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 36 }}>
+      {/* Header */}
+      <div className="flex items-end justify-between mb-9">
         <div>
-          <div style={{
-            fontSize: 12, color: '#E8572A', fontWeight: 600,
-            letterSpacing: '0.14em', textTransform: 'uppercase' as const, marginBottom: 10,
-          }}>
-            {isStaff ? `Panel ${role}` : 'Mi panel'}
-          </div>
-          <h1 style={{
-            fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 44, fontWeight: 800,
-            margin: 0, letterSpacing: '-0.03em', lineHeight: 1, color: '#1D1D1F',
-          }}>
+          <p className="page-eyebrow">Panel {role}</p>
+          <h1 className="font-display text-5xl font-bold tracking-tight leading-none text-text-primary">
             Hola, {firstName}.
           </h1>
-          <p style={{ marginTop: 10, fontSize: 15, color: '#6E6E73' }}>
-            {isStaff ? 'Todas las cotizaciones del sistema' : 'Mis eventos y propuestas'}
+          <p className="mt-2.5 text-[15px] text-text-secondary">
+            Todas las cotizaciones del sistema
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {role !== 'admin' && (
-            <button className="btn btn-primary" onClick={() => navigate('/quotations/new')}>
-              <PlusCircle size={15} /> Nueva cotización
-            </button>
-          )}
-        </div>
+        {role !== 'admin' && (
+          <button className="btn btn-primary" onClick={() => navigate('/quotations/new')}>
+            <PlusCircle size={15} /> Nueva cotización
+          </button>
+        )}
       </div>
 
-      {/* ── Stats ── */}
-      {stats ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
-          <StatCard label="Total cotizaciones" value={stats.total} icon={BarChart2} />
-          <StatCard label="Completadas" value={stats.completadas} suffix={`/ ${stats.total}`} icon={CheckCircle} />
-          <StatCard
-            label="Calidad promedio"
-            value={stats.quality_score_promedio != null ? `${qualityPct.toFixed(0)}%` : '—'}
-            icon={Star}
-            accent
-          />
-          <StatCard
-            label="Costo promedio"
-            value={stats.costo_promedio != null ? `S/${(stats.costo_promedio / 1000).toFixed(1)}k` : '—'}
-            icon={TrendingUp}
-          />
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
-          {[1,2,3,4].map(i => (
-            <div key={i} className="glass" style={{ padding: 24, height: 132 }}>
-              <div style={{ height: 12, borderRadius: 6, background: 'rgba(26,23,20,0.06)', width: '60%', marginBottom: 14 }} />
-              <div style={{ height: 40, borderRadius: 8, background: 'rgba(26,23,20,0.06)', width: '40%' }} />
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        {stats ? (
+          <>
+            <StatCard label="Total cotizaciones" value={stats.total} icon={BarChart2} />
+            <StatCard label="Completadas" value={stats.completadas} suffix={`/ ${stats.total}`} icon={CheckCircle} />
+            <StatCard
+              label="Calidad promedio"
+              value={stats.quality_score_promedio != null ? `${qualityPct.toFixed(0)}%` : '—'}
+              icon={Star} accent
+            />
+            <StatCard
+              label="Costo promedio"
+              value={stats.costo_promedio != null ? `S/${(stats.costo_promedio / 1000).toFixed(1)}k` : '—'}
+              icon={TrendingUp}
+            />
+          </>
+        ) : (
+          [1,2,3,4].map(i => <StatCardSkeleton key={i} />)
+        )}
+      </div>
 
-      {/* ── Loading ── */}
-      {isLoading && (
-        <div className="glass" style={{ padding: 24 }}>
-          {[1,2,3,4,5].map(i => (
-            <div key={i} style={{ display: 'flex', gap: 16, padding: '14px 0', borderBottom: '1px solid rgba(26,23,20,0.04)' }}>
-              {[120,200,120,80,120,100,120].map((w, j) => (
-                <div key={j} style={{ height: 14, borderRadius: 4, background: 'rgba(26,23,20,0.06)', width: w }} />
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Error ── */}
+      {/* Error */}
       {isError && (
-        <div className="glass" style={{ padding: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
-          <AlertCircle size={20} style={{ color: '#FF3B30', flexShrink: 0 }} />
-          <p style={{ fontSize: 14, color: '#1D1D1F', flex: 1, margin: 0 }}>
-            No se pudieron cargar las cotizaciones.
-          </p>
-          <button className="btn btn-secondary btn-sm" onClick={() => refetch()}>Reintentar</button>
+        <div className="alert alert-danger mb-6">
+          <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+          <span className="flex-1">No se pudieron cargar las cotizaciones.</span>
+          <button className="btn btn-ghost btn-sm" onClick={() => refetch()}>
+            <RefreshCw size={13} /> Reintentar
+          </button>
         </div>
       )}
 
-      {/* ── Empty ── */}
-      {quotations && quotations.length === 0 && (
-        <div className="glass" style={{ padding: 64, textAlign: 'center' }}>
-          <div style={{ width: 64, height: 64, borderRadius: 16, background: 'rgba(232,87,42,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <BarChart2 size={28} style={{ color: '#E8572A' }} />
+      {/* Loading */}
+      {isLoading && (
+        <div className="table-container">
+          <div className="table-header" style={{ gridTemplateColumns: GRID_STAFF }}>
+            {['Evento','Cliente','Tipo','Nivel','Estado','Costo','Calidad',''].map((h,i) =>
+              <div key={i}>{h}</div>
+            )}
           </div>
-          <h3 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 26, fontWeight: 700, margin: '0 0 10px', letterSpacing: '-0.02em' }}>
-            {isStaff ? 'No hay cotizaciones aún' : 'Aún no tienes cotizaciones'}
-          </h3>
-          <p style={{ fontSize: 14, color: '#6E6E73', maxWidth: 360, margin: '0 auto 28px', lineHeight: 1.6 }}>
-            {isStaff
-              ? 'Las cotizaciones generadas por clientes aparecerán aquí.'
-              : 'Describe tu evento y recibe una propuesta personalizada en minutos.'}
-          </p>
-          {role !== 'admin' && (
-            <button className="btn btn-primary" onClick={() => navigate('/quotations/new')}>
-              <PlusCircle size={15} /> {isStaff ? 'Crear cotización' : 'Crear mi primera cotización'}
-            </button>
-          )}
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="table-row" style={{ gridTemplateColumns: GRID_STAFF }}>
+              <div className="flex items-center gap-2.5">
+                <div className="skeleton w-8 h-8 rounded-lg" />
+                <div className="skeleton h-3.5 w-32 rounded" />
+              </div>
+              <div className="skeleton h-3 w-20 rounded" />
+              <div className="skeleton h-3 w-16 rounded" />
+              <div className="skeleton h-5 w-16 rounded-full" />
+              <div className="skeleton h-5 w-20 rounded-full" />
+              <div className="skeleton h-3 w-24 rounded ml-auto" />
+              <div className="skeleton h-2 w-full rounded-full" />
+              <div />
+            </div>
+          ))}
         </div>
       )}
 
-      {/* ── Filtros + tabla ── */}
+      {/* Empty */}
+      {!isLoading && quotations?.length === 0 && (
+        <div className="glass p-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-accent/8 flex items-center justify-center mx-auto mb-5">
+            <BarChart2 size={28} className="text-accent" />
+          </div>
+          <h3 className="font-display text-2xl font-bold tracking-tight mb-2">No hay cotizaciones aún</h3>
+          <p className="text-sm text-text-secondary max-w-xs mx-auto mb-7 leading-relaxed">
+            Las cotizaciones generadas por clientes aparecerán aquí.
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate('/quotations/new')}>
+            <PlusCircle size={15} /> Crear cotización
+          </button>
+        </div>
+      )}
+
+      {/* Lista */}
       {quotations && quotations.length > 0 && (
         <>
           {/* Filter bar */}
-          <div className="glass" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <div style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
-              <Search size={15} style={{ position: 'absolute', left: 12, top: 11, color: '#AEAEB2', pointerEvents: 'none' }} />
+          <div className="glass flex items-center gap-3 p-3.5 mb-4 flex-wrap">
+            <div className="relative flex-1 min-w-48">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
               <input
-                className="input"
-                placeholder={isStaff ? 'Buscar por cliente, evento...' : 'Buscar evento...'}
+                className="input w-full"
+                style={{ paddingLeft: '2rem' }}
+                placeholder="Buscar por cliente, evento..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                style={{ paddingLeft: 36 }}
               />
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
+
+            <div className="flex gap-1.5">
               {FILTERS.map((f) => (
                 <button
                   key={f}
-                  className="btn btn-sm"
                   onClick={() => setActiveFilter(f)}
-                  style={{
-                    background: activeFilter === f ? 'rgba(232,87,42,0.10)' : 'transparent',
-                    color: activeFilter === f ? '#E8572A' : '#6E6E73',
-                    border: activeFilter === f ? '1px solid rgba(232,87,42,0.20)' : '1px solid transparent',
-                    fontWeight: activeFilter === f ? 600 : 500,
-                  }}
+                  className={`btn btn-sm transition-all ${
+                    activeFilter === f
+                      ? 'bg-accent/10 text-accent border border-accent/20 font-semibold'
+                      : 'bg-transparent text-text-secondary border border-transparent hover:text-text-primary'
+                  }`}
                 >
                   {f}
                 </button>
               ))}
             </div>
+
             <select
               className="input"
               value={filterEstado}
               onChange={(e) => setFilterEstado(e.target.value)}
-              style={{ maxWidth: 160 }}
+              style={{ maxWidth: 164 }}
             >
               <option value="">Todos los estados</option>
               <option value="completado">Completado</option>
               <option value="procesando">Procesando</option>
               <option value="error">Error</option>
             </select>
+
             {filtered.length !== quotations.length && (
-              <span style={{ fontSize: 12, color: '#AEAEB2', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+              <span className="text-xs text-text-muted ml-auto whitespace-nowrap">
                 {filtered.length} de {quotations.length}
               </span>
             )}
           </div>
 
-          {/* Table */}
-          <div className="glass" style={{ overflow: 'hidden', padding: 0 }}>
-            {/* Header */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isStaff
-                ? '1.4fr 1fr 1fr 1fr 1fr 1fr 140px 32px'
-                : '1.4fr 1fr 1fr 1fr 1fr 140px 32px',
-              padding: '14px 22px',
-              fontSize: 11, fontWeight: 600, color: '#AEAEB2',
-              letterSpacing: '0.08em', textTransform: 'uppercase' as const,
-              borderBottom: '1px solid rgba(26,23,20,0.06)',
-            }}>
+          {/* Mobile cards */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {filtered.length === 0 ? (
+              <p className="text-center text-sm text-text-secondary py-12">Sin resultados</p>
+            ) : filtered.map(q => (
+              <QuotationCard key={q.id} q={q} isStaff={true} onClick={() => navigate(`/quotations/${q.id}`)} />
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="table-container hidden md:block">
+            <div className="table-header" style={{ gridTemplateColumns: GRID_STAFF }}>
               <div>Evento</div>
-              {isStaff && <div>Cliente</div>}
+              <div>Cliente</div>
               <div>Tipo</div>
               <div>Nivel</div>
               <div>Estado</div>
-              <div style={{ textAlign: 'right' as const }}>Costo</div>
-              <div style={{ textAlign: 'right' as const }}>Calidad</div>
+              <div className="text-right">Costo</div>
+              <div>Calidad</div>
               <div>Fecha</div>
               <div />
             </div>
 
-            {/* Rows */}
             {filtered.length === 0 ? (
-              <div style={{ padding: '48px 22px', textAlign: 'center' as const, fontSize: 14, color: '#6E6E73' }}>
+              <div className="py-12 text-center text-sm text-text-secondary">
                 Sin resultados para los filtros seleccionados
               </div>
-            ) : filtered.map((q, i) => (
+            ) : filtered.map((q) => (
               <div
                 key={q.id}
+                className="table-row group"
+                style={{ gridTemplateColumns: GRID_STAFF }}
                 onClick={() => navigate(`/quotations/${q.id}`)}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: isStaff
-                    ? '1.4fr 1fr 1fr 1fr 1fr 1fr 140px 32px'
-                    : '1.4fr 1fr 1fr 1fr 1fr 140px 32px',
-                  padding: '16px 22px',
-                  alignItems: 'center',
-                  fontSize: 14,
-                  background: i % 2 === 1 ? 'rgba(255,255,255,0.40)' : 'transparent',
-                  borderBottom: i === filtered.length - 1 ? 'none' : '1px solid rgba(26,23,20,0.04)',
-                  cursor: 'pointer',
-                  transition: 'background 180ms',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(232,87,42,0.05)'
-                  const arrow = e.currentTarget.querySelector('.row-arrow') as HTMLElement | null
-                  if (arrow) { arrow.style.opacity = '1'; arrow.style.transform = 'translateX(2px)' }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = i % 2 === 1 ? 'rgba(255,255,255,0.40)' : 'transparent'
-                  const arrow = e.currentTarget.querySelector('.row-arrow') as HTMLElement | null
-                  if (arrow) { arrow.style.opacity = '0'; arrow.style.transform = 'translateX(0)' }
-                }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                    background: 'rgba(26,23,20,0.06)', color: '#1D1D1F',
-                    fontSize: 11, fontWeight: 600,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-text-primary/6 flex items-center justify-center text-[11px] font-semibold text-text-primary flex-shrink-0">
                     {q.evento_nombre.split(' ').map((s: string) => s[0]).slice(0,2).join('')}
                   </div>
-                  <span style={{ fontWeight: 500, color: '#1D1D1F' }}>{q.evento_nombre}</span>
+                  <span className="font-medium text-sm text-text-primary truncate">{q.evento_nombre}</span>
                 </div>
-                {isStaff && (
-                  <div style={{ fontSize: 13, color: '#6E6E73' }}>{q.cliente_nombre ?? '—'}</div>
-                )}
-                <EventLabel tipo={q.evento_tipo} />
+                <span className="text-[13px] text-text-secondary truncate">{q.cliente_nombre ?? '—'}</span>
+                <span className="text-[13px] text-text-secondary">{EVENT_LABELS[q.evento_tipo] ?? q.evento_tipo}</span>
                 <div><LevelBadge nivel={q.nivel} /></div>
                 <div><StatusBadge estado={q.estado} /></div>
-                <div style={{ textAlign: 'right' as const, fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, color: '#1D1D1F' }}>
+                <div className="text-right font-mono text-sm font-semibold text-text-primary">
                   {q.costo_total != null
                     ? `S/ ${q.costo_total.toLocaleString('es-PE', { minimumFractionDigits: 0 })}`
-                    : <span style={{ color: '#AEAEB2', fontWeight: 400 }}>—</span>}
+                    : <span className="text-text-muted font-normal">—</span>}
                 </div>
                 <div className="w-24">
                   {q.quality_score != null
                     ? <QualityBar value={q.quality_score} />
-                    : <span style={{ color: '#AEAEB2' }}>—</span>}
+                    : <span className="text-text-muted">—</span>}
                 </div>
-                <div style={{ fontSize: 12, color: '#AEAEB2' }}>
-                  {new Date(q.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                <div className="text-xs text-text-muted">
+                  {new Date(q.created_at).toLocaleDateString('es-PE', { day:'2-digit', month:'short', year:'numeric' })}
                 </div>
-                <div className="row-arrow" style={{ color: '#E8572A', opacity: 0, transition: 'opacity 180ms, transform 180ms', display: 'flex', justifyContent: 'flex-end' }}>
-                  <ArrowUpRight size={15} />
+                <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ArrowUpRight size={14} className="text-accent" />
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Pagination info */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, fontSize: 13, color: '#6E6E73' }}>
-            <div>Mostrando <strong style={{ color: '#1D1D1F' }}>{filtered.length}</strong> de <strong style={{ color: '#1D1D1F' }}>{quotations.length}</strong></div>
-            {isStaff && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                <Lock size={12} style={{ color: '#AEAEB2' }} />
-                <span style={{ color: '#AEAEB2' }}>Identidad de proveedores protegida</span>
-              </div>
-            )}
+          <div className="flex items-center justify-between mt-4 text-[13px] text-text-secondary">
+            <span>
+              Mostrando <strong className="text-text-primary">{filtered.length}</strong> de{' '}
+              <strong className="text-text-primary">{quotations.length}</strong>
+            </span>
+            <span className="flex items-center gap-1.5 text-text-muted text-xs">
+              <Lock size={11} /> Identidad de proveedores protegida para clientes
+            </span>
           </div>
         </>
       )}
