@@ -61,7 +61,7 @@ export default function LandingPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span className="logo-mark">I</span>
           <span style={{
-            fontFamily: 'Syne, sans-serif', fontWeight: 800,
+            fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 800,
             fontSize: 13, letterSpacing: '0.18em', lineHeight: 1.1,
           }}>
             INARI<br/><span style={{ color: '#6E6E73', fontWeight: 600 }}>GROUP</span>
@@ -80,7 +80,7 @@ export default function LandingPage() {
         </nav>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => navigate('/login')}>Ingresar</button>
-          <button className="btn btn-primary btn-sm" onClick={() => navigate('/register')}>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate('/cotizar')}>
             Cotizar <ArrowRight size={14} />
           </button>
         </div>
@@ -95,7 +95,7 @@ export default function LandingPage() {
               <span style={{ fontSize: 13, color: '#6E6E73' }}>Lima · Perú</span>
             </div>
             <h1 style={{
-              fontFamily: 'Syne, sans-serif', fontSize: 80, fontWeight: 800,
+              fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 80, fontWeight: 800,
               lineHeight: 0.98, margin: 0, letterSpacing: '-0.035em', color: '#1D1D1F',
             }}>
               Eventos<br/>
@@ -106,7 +106,7 @@ export default function LandingPage() {
               Cotizamos, coordinamos y orquestamos cada detalle de tu evento con una red curada de 43 proveedores en Lima.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 36 }}>
-              <button className="btn btn-primary btn-lg" onClick={() => navigate('/register')}>
+              <button className="btn btn-primary btn-lg" onClick={() => navigate('/cotizar')}>
                 Cotizar mi evento <ArrowRight size={16} />
               </button>
               <button className="btn btn-secondary btn-lg" onClick={() => navigate('/login')}>
@@ -166,7 +166,7 @@ export default function LandingPage() {
                 <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#AEAEB2' }}>#INR-2847</span>
               </div>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 22, fontWeight: 700, lineHeight: 1.15, marginBottom: 4 }}>
+                <div style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 22, fontWeight: 700, lineHeight: 1.15, marginBottom: 4 }}>
                   Boda · Sofía & Mateo
                 </div>
                 <div style={{ fontSize: 13, color: '#6E6E73' }}>120 invitados · Casa Hacienda, Pachacámac</div>
@@ -178,7 +178,7 @@ export default function LandingPage() {
                 ].map(s => (
                   <div key={s.l} style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(26,23,20,0.08)', borderRadius: 10, padding: 10 }}>
                     <div style={{ fontSize: 10, color: '#AEAEB2', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{s.l}</div>
-                    <div style={{ fontFamily: s.isMono ? 'JetBrains Mono, monospace' : 'Syne, sans-serif', fontSize: s.isMono ? 16 : 22, fontWeight: 700, marginTop: 2 }}>
+                    <div style={{ fontFamily: s.isMono ? 'JetBrains Mono, monospace' : 'Cormorant Garamond, Georgia, serif', fontSize: s.isMono ? 16 : 22, fontWeight: 700, marginTop: 2 }}>
                       {s.v}{s.sub && <span style={{ fontSize: 12, color: '#AEAEB2', fontWeight: 500 }}>{s.sub}</span>}
                     </div>
                   </div>
@@ -233,7 +233,7 @@ export default function LandingPage() {
               borderLeft: i === 0 ? 'none' : '1px solid rgba(26,23,20,0.08)',
               display: 'flex', flexDirection: 'column', gap: 6,
             }}>
-              <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 48, fontWeight: 800, lineHeight: 1, letterSpacing: '-0.03em', color: '#1D1D1F' }}>
+              <div style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 48, fontWeight: 800, lineHeight: 1, letterSpacing: '-0.03em', color: '#1D1D1F' }}>
                 {s.value}
               </div>
               <div style={{ fontSize: 13, color: '#6E6E73' }}>{s.label}</div>
@@ -247,7 +247,7 @@ export default function LandingPage() {
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 48 }}>
           <div>
             <div style={{ fontSize: 12, color: '#E8572A', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' as const, marginBottom: 12 }}>— Servicios</div>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 52, fontWeight: 800, margin: 0, letterSpacing: '-0.03em', lineHeight: 1, color: '#1D1D1F' }}>
+            <h2 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 52, fontWeight: 800, margin: 0, letterSpacing: '-0.03em', lineHeight: 1, color: '#1D1D1F' }}>
               Seis formatos.<br/>Una sola obsesión.
             </h2>
           </div>
@@ -267,7 +267,7 @@ export default function LandingPage() {
               }}>
                 <s.icon size={20} />
               </div>
-              <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 24, fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em', color: '#1D1D1F' }}>
+              <h3 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 24, fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em', color: '#1D1D1F' }}>
                 {s.title}
               </h3>
               <p style={{ fontSize: 14, color: '#6E6E73', lineHeight: 1.55, margin: 0, flex: 1 }}>{s.desc}</p>
@@ -284,13 +284,13 @@ export default function LandingPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 56, alignItems: 'start' }}>
           <div style={{ position: 'sticky', top: 120 }}>
             <div style={{ fontSize: 12, color: '#E8572A', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' as const, marginBottom: 14 }}>— Por qué Inari</div>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 60, fontWeight: 800, margin: 0, letterSpacing: '-0.035em', lineHeight: 0.98, color: '#1D1D1F' }}>
+            <h2 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 60, fontWeight: 800, margin: 0, letterSpacing: '-0.035em', lineHeight: 0.98, color: '#1D1D1F' }}>
               La diferencia<br/>está en lo que <span className="text-gradient">no</span><br/>se ve.
             </h2>
             <p style={{ marginTop: 28, fontSize: 16, color: '#6E6E73', lineHeight: 1.6, maxWidth: 440 }}>
               Cualquier agencia puede contratar un catering. Nosotros nos obsesionamos con los 1,200 detalles invisibles que hacen que un evento no se olvide.
             </p>
-            <button className="btn btn-primary btn-lg" style={{ marginTop: 28 }} onClick={() => navigate('/register')}>
+            <button className="btn btn-primary btn-lg" style={{ marginTop: 28 }} onClick={() => navigate('/cotizar')}>
               Conocer al equipo <ArrowRight size={16} />
             </button>
           </div>
@@ -301,11 +301,11 @@ export default function LandingPage() {
                 display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
                 transform: i % 2 === 1 ? 'translateY(32px)' : 'none',
               }}>
-                <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 64, fontWeight: 800, color: 'rgba(232,87,42,0.16)', lineHeight: 1, letterSpacing: '-0.04em' }}>
+                <div style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 64, fontWeight: 800, color: 'rgba(232,87,42,0.16)', lineHeight: 1, letterSpacing: '-0.04em' }}>
                   0{i + 1}
                 </div>
                 <div>
-                  <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 22, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.02em', color: '#1D1D1F' }}>
+                  <h3 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 22, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.02em', color: '#1D1D1F' }}>
                     {f.title}
                   </h3>
                   <p style={{ fontSize: 14, color: '#6E6E73', lineHeight: 1.5, margin: 0 }}>{f.desc}</p>
@@ -320,7 +320,7 @@ export default function LandingPage() {
       <section id="proceso" style={{ padding: '80px 64px' }}>
         <div style={{ marginBottom: 56, maxWidth: 720 }}>
           <div style={{ fontSize: 12, color: '#E8572A', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' as const, marginBottom: 14 }}>— Proceso</div>
-          <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 56, fontWeight: 800, margin: 0, letterSpacing: '-0.035em', lineHeight: 1, color: '#1D1D1F' }}>
+          <h2 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 56, fontWeight: 800, margin: 0, letterSpacing: '-0.035em', lineHeight: 1, color: '#1D1D1F' }}>
             Tres pasos. Cero fricción.
           </h2>
         </div>
@@ -329,7 +329,7 @@ export default function LandingPage() {
             <div key={p.n} className="glass card-hover" style={{ padding: 32, position: 'relative', overflow: 'hidden', minHeight: 240 }}>
               <div style={{
                 position: 'absolute', right: 16, top: -8,
-                fontFamily: 'Syne, sans-serif', fontSize: 140, fontWeight: 800,
+                fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 140, fontWeight: 800,
                 color: 'rgba(232,87,42,0.08)', lineHeight: 1, letterSpacing: '-0.06em',
                 userSelect: 'none' as const, pointerEvents: 'none' as const,
               }}>
@@ -339,7 +339,7 @@ export default function LandingPage() {
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#E8572A', letterSpacing: '0.1em', marginBottom: 16 }}>
                   PASO {p.n}
                 </div>
-                <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 26, fontWeight: 700, margin: '0 0 12px', letterSpacing: '-0.02em', maxWidth: 220, color: '#1D1D1F' }}>
+                <h3 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 26, fontWeight: 700, margin: '0 0 12px', letterSpacing: '-0.02em', maxWidth: 220, color: '#1D1D1F' }}>
                   {p.title}
                 </h3>
                 <p style={{ fontSize: 14, color: '#6E6E73', lineHeight: 1.55, margin: 0, maxWidth: 280 }}>{p.desc}</p>
@@ -367,7 +367,7 @@ export default function LandingPage() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
               <span className="badge badge-accent"><Zap size={12} /> AI nativo</span>
             </div>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 44, fontWeight: 800, margin: 0, letterSpacing: '-0.03em', lineHeight: 1.05, color: '#1D1D1F' }}>
+            <h2 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 44, fontWeight: 800, margin: 0, letterSpacing: '-0.03em', lineHeight: 1.05, color: '#1D1D1F' }}>
               Tecnología que entiende cómo planificas un evento.
             </h2>
             <p style={{ marginTop: 20, fontSize: 16, color: '#6E6E73', lineHeight: 1.6, maxWidth: 480 }}>
@@ -407,13 +407,13 @@ export default function LandingPage() {
 
       {/* ── Final CTA ── */}
       <section style={{ padding: '120px 64px 80px', textAlign: 'center' as const }}>
-        <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 88, fontWeight: 800, margin: '0 auto', letterSpacing: '-0.04em', lineHeight: 0.95, maxWidth: 920, color: '#1D1D1F' }}>
+        <h2 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 88, fontWeight: 800, margin: '0 auto', letterSpacing: '-0.04em', lineHeight: 0.95, maxWidth: 920, color: '#1D1D1F' }}>
           Tu próximo evento empieza con <span className="text-gradient">una frase</span>.
         </h2>
         <p style={{ marginTop: 32, fontSize: 18, color: '#6E6E73', maxWidth: 560, margin: '32px auto 0' }}>
           Cotización gratuita en menos de 60 segundos. Sin compromiso, sin formulario interminable.
         </p>
-        <button className="btn btn-primary btn-lg" style={{ marginTop: 36, padding: '18px 32px', fontSize: 16 }} onClick={() => navigate('/register')}>
+        <button className="btn btn-primary btn-lg" style={{ marginTop: 36, padding: '18px 32px', fontSize: 16 }} onClick={() => navigate('/cotizar')}>
           Empezar mi cotización <ArrowRight size={16} />
         </button>
       </section>
@@ -430,7 +430,7 @@ export default function LandingPage() {
               <KeyRound size={18} />
             </div>
             <div>
-              <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: '#1D1D1F' }}>
+              <div style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: '#1D1D1F' }}>
                 Explora la plataforma
               </div>
               <div style={{ fontSize: 13, color: '#6E6E73', marginTop: 1 }}>
@@ -467,7 +467,7 @@ export default function LandingPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="logo-mark" style={{ width: 32, height: 32, fontSize: 16 }}>I</span>
-              <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 13, letterSpacing: '0.18em' }}>
+              <span style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 800, fontSize: 13, letterSpacing: '0.18em' }}>
                 INARI<br/><span style={{ color: '#6E6E73', fontWeight: 600 }}>GROUP</span>
               </span>
             </div>

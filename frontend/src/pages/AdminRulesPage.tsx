@@ -6,6 +6,7 @@ import {
 import { rulesApi } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import type { BusinessRule } from '../types'
+import ConfirmModal from '../components/shared/ConfirmModal'
 
 const EVENT_LABELS: Record<string, string> = {
   boda: 'Boda', corporativo: 'Corporativo', cumpleanos: 'Cumpleaños',
@@ -139,6 +140,7 @@ export default function AdminRulesPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [mutationError, setMutationError] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<{ id: number; label: string } | null>(null)
 
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ['rules'],
@@ -208,8 +210,7 @@ export default function AdminRulesPage() {
   })
 
   const handleDelete = (id: number, label: string) => {
-    if (!window.confirm(`¿Eliminar la regla "${label}"? Esta acción no se puede deshacer.`)) return
-    deleteMutation.mutate(id)
+    setPendingDelete({ id, label })
   }
 
   const grouped = rules.reduce<Record<string, BusinessRule[]>>((acc, r) => {
@@ -220,6 +221,18 @@ export default function AdminRulesPage() {
 
   return (
     <div className="pt-10 px-8 pb-12 max-w-[1100px] mx-auto animate-fade-in">
+
+      {pendingDelete && (
+        <ConfirmModal
+          open={true}
+          title="Eliminar regla"
+          message={`¿Eliminar la regla "${pendingDelete.label}"? Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={() => { deleteMutation.mutate(pendingDelete.id); setPendingDelete(null) }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-10">

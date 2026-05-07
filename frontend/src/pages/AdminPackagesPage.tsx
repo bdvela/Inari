@@ -6,6 +6,7 @@ import {
 import { packagesApi } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import type { ServicePackageModel } from '../types'
+import ConfirmModal from '../components/shared/ConfirmModal'
 
 interface PackageFormData {
   name: string
@@ -98,6 +99,7 @@ export default function AdminPackagesPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [mutationError, setMutationError] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null)
 
   const { data: packages = [], isLoading } = useQuery({
     queryKey: ['packages'],
@@ -144,12 +146,23 @@ export default function AdminPackagesPage() {
   })
 
   const handleDelete = (id: number, name: string) => {
-    if (!window.confirm(`¿Eliminar el paquete "${name}"? Esta acción no se puede deshacer.`)) return
-    deleteMutation.mutate(id)
+    setPendingDelete({ id, name })
   }
 
   return (
     <div className="pt-10 px-8 pb-12 max-w-[1100px] mx-auto animate-fade-in">
+
+      {pendingDelete && (
+        <ConfirmModal
+          open={true}
+          title="Eliminar paquete"
+          message={`¿Eliminar el paquete "${pendingDelete.name}"? Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={() => { deleteMutation.mutate(pendingDelete.id); setPendingDelete(null) }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-10">

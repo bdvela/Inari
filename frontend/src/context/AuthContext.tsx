@@ -16,6 +16,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>
+  loginWithToken: (data: AuthToken) => void
   register: (data: RegisterData) => Promise<void>
   logout: () => void
 }
@@ -63,6 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persistToken(data)
   }, [])
 
+  const loginWithToken = useCallback((data: AuthToken) => {
+    persistToken(data)
+  }, [])
+
   const register = useCallback(async (data: RegisterData) => {
     const result = await authApi.register(data)
     persistToken({ ...result, nombre: data.nombre })
@@ -74,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout }}>
+    <AuthContext.Provider value={{ ...state, login, loginWithToken, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

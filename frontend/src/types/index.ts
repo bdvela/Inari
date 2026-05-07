@@ -64,6 +64,8 @@ export interface Quotation {
   presupuesto_maximo: number | null
   style_analysis: StyleAnalysisResult | null
   package_selected: PackageSelected | null
+  image_inferred_services: string[]
+  imagenes_referencia: { url: string; nombre: string }[]
   detalles: QuotationDetail[]
 }
 
@@ -108,6 +110,7 @@ export interface GenerateQuotationResult {
   premium_costo: number | null
   version: number
   package_selected: PackageSelected | null
+  image_inferred_services: string[]
 }
 
 export interface Provider {
@@ -187,5 +190,17 @@ export interface StyleAnalysisResult {
   aesthetic_style: string
   luxury_level: number
   style_keywords: string[]
+  visual_elements: string[]
+  suggested_services: string[]
   confidence: number
+}
+
+export interface ChangeLogEntry {
+  id: number
+  accion: string
+  usuario_nombre: string
+  usuario_rol: string
+  valor_anterior: string | null
+  valor_nuevo: string | null
+  created_at: string
 }

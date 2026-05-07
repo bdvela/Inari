@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.models.models import Quotation, QuotationDetail, OptimizationLog
+from backend.models.models import Event, Quotation, QuotationDetail, OptimizationLog, ReferenceImage, User
 
 
 class QuotationRepository:
@@ -18,7 +18,8 @@ class QuotationRepository:
             .where(Quotation.id == quotation_id)
             .options(
                 selectinload(Quotation.detalles).selectinload(QuotationDetail.proveedor),
-                selectinload(Quotation.evento),
+                selectinload(Quotation.evento).selectinload(Event.imagenes),
+                selectinload(Quotation.cliente),
             )
         )
         return result.scalar_one_or_none()

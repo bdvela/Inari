@@ -7,6 +7,7 @@ import type {
   AlternativeProvider,
   AuthToken,
   BusinessRule,
+  ChangeLogEntry,
   DashboardStats,
   EventTypeOption,
   GenerateQuotationResult,
@@ -57,6 +58,51 @@ export const authApi = {
     telefono?: string
     role?: string
   }) => http.post<AuthToken>('/auth/register', data).then((r) => r.data),
+
+  registerAndQuote: (data: {
+    nombre: string
+    email: string
+    telefono_whatsapp: string
+    password: string
+    mensaje?: string
+    evento_tipo: string
+    evento_fecha: string
+    num_invitados: number
+    presupuesto_maximo: number
+    estilo?: string
+    descripcion?: string
+  }) => http.post<{
+    access_token: string
+    user_id: number
+    role: string
+    nombre: string
+    quotation_basica_id: number | null
+    quotation_premium_id: number | null
+    basica_factible: boolean
+    premium_factible: boolean
+  }>('/auth/register-and-quote', data).then((r) => r.data),
+}
+
+// Guest preview (sin auth)
+export const guestApi = {
+  preview: (formData: FormData) =>
+    http.post<{
+      basica: { nivel: string; factible: boolean; costo_total: number; quality_score: number; detalles: Array<{ servicio: string; costo: number; es_obligatorio: boolean; quality_index: number }> }
+      premium: { nivel: string; factible: boolean; costo_total: number; quality_score: number; detalles: Array<{ servicio: string; costo: number; es_obligatorio: boolean; quality_index: number }> }
+      basica_factible: boolean
+      premium_factible: boolean
+      num_invitados: number
+      evento_tipo: string
+      evento_fecha: string
+      presupuesto_maximo: number
+      estilo: string | null
+      descripcion: string | null
+      image_inferred_services: string[]
+      style_detected: Record<string, unknown> | null
+      package_selected: Record<string, unknown> | null
+    }>('/quotations/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data),
 }
 
 // Cotizaciones
@@ -93,21 +139,22 @@ export const quotationsApi = {
   getPair: (quotationId: number) =>
     http.get<QuotationPair>(`/quotations/${quotationId}/pair`).then((r) => r.data),
 
-  downloadPdf: async (id: number): Promise<void> => {
-    const response = await http.get(`/quotations/${id}/pdf`, {
+  getChangelog: (quotationId: number) =>
+    http.get<ChangeLogEntry[]>(`/quotations/${quotationId}/changelog`).then((r) => r.data),
+
+  downloadPdf: async (id: number, version: 'ejecutivo' | 'cliente' = 'ejecutivo'): Promise<void> => {
+    const response = await http.get(`/quotations/${id}/pdf?version=${version}`, {
       responseType: 'blob',
     })
     const contentType: string = response.headers['content-type'] ?? ''
     const url = URL.createObjectURL(response.data)
 
     if (contentType.includes('text/html')) {
-      // Dev Mac: WeasyPrint no disponible → abrir HTML en tab para imprimir (Cmd+P)
       window.open(url, '_blank')
     } else {
-      // Producción: descargar PDF real
       const a = document.createElement('a')
       a.href = url
-      a.download = `propuesta_${id}.pdf`
+      a.download = `propuesta_${id}_${version}.pdf`
       a.click()
     }
 

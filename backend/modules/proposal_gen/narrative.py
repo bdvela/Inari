@@ -29,9 +29,18 @@ def _call_gemini_narrative_sync(prompt: str) -> str:
     response = client.models.generate_content(
         model=settings.VISION_MODEL,
         contents=[types.Content(role="user", parts=[types.Part.from_text(text=prompt)])],
-        config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=600),
+        config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=1500),
     )
-    return response.text.strip()
+    text = response.text or ""
+    finish = getattr(response.candidates[0], "finish_reason", "unknown") if response.candidates else "unknown"
+    logger.info("Narrativa generada: %d chars, finish_reason=%s", len(text), finish)
+    # Limpiar markdown residual: asteriscos, guiones de lista, backticks
+    import re
+    text = re.sub(r'\*+([^*]+)\*+', r'\1', text)   # *bold* → bold
+    text = re.sub(r'`([^`]+)`', r'\1', text)         # `code` → code
+    text = re.sub(r'^\s*[-•]\s+', '', text, flags=re.MULTILINE)  # listas
+    text = text.strip()
+    return text
 
 
 async def generate_narrative(

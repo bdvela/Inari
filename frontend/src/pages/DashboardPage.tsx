@@ -63,7 +63,7 @@ function StatCard({
       </div>
       <div style={{ marginTop: 14, display: 'flex', alignItems: 'baseline', gap: 4 }}>
         <span style={{
-          fontFamily: 'Syne, sans-serif', fontSize: 44,
+          fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 44,
           fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, color: '#1D1D1F',
         }}>
           {value}
@@ -130,13 +130,13 @@ export default function DashboardPage() {
             {isStaff ? `Panel ${role}` : 'Mi panel'}
           </div>
           <h1 style={{
-            fontFamily: 'Syne, sans-serif', fontSize: 44, fontWeight: 800,
+            fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 44, fontWeight: 800,
             margin: 0, letterSpacing: '-0.03em', lineHeight: 1, color: '#1D1D1F',
           }}>
             Hola, {firstName}.
           </h1>
           <p style={{ marginTop: 10, fontSize: 15, color: '#6E6E73' }}>
-            {isStaff ? 'Todas las cotizaciones del sistema' : 'Gestión de cotizaciones y propuestas'}
+            {isStaff ? 'Todas las cotizaciones del sistema' : 'Mis eventos y propuestas'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -206,15 +206,19 @@ export default function DashboardPage() {
           <div style={{ width: 64, height: 64, borderRadius: 16, background: 'rgba(232,87,42,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
             <BarChart2 size={28} style={{ color: '#E8572A' }} />
           </div>
-          <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 26, fontWeight: 700, margin: '0 0 10px', letterSpacing: '-0.02em' }}>
-            No hay cotizaciones aún
+          <h3 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 26, fontWeight: 700, margin: '0 0 10px', letterSpacing: '-0.02em' }}>
+            {isStaff ? 'No hay cotizaciones aún' : 'Aún no tienes cotizaciones'}
           </h3>
           <p style={{ fontSize: 14, color: '#6E6E73', maxWidth: 360, margin: '0 auto 28px', lineHeight: 1.6 }}>
-            Crea tu primera cotización describiendo tu evento.
+            {isStaff
+              ? 'Las cotizaciones generadas por clientes aparecerán aquí.'
+              : 'Describe tu evento y recibe una propuesta personalizada en minutos.'}
           </p>
-          <button className="btn btn-primary" onClick={() => navigate('/quotations/new')}>
-            <PlusCircle size={15} /> Crear cotización
-          </button>
+          {role !== 'admin' && (
+            <button className="btn btn-primary" onClick={() => navigate('/quotations/new')}>
+              <PlusCircle size={15} /> {isStaff ? 'Crear cotización' : 'Crear mi primera cotización'}
+            </button>
+          )}
         </div>
       )}
 

@@ -18,7 +18,9 @@ class Proposal(BaseModel):
     evento_fecha: date
     num_invitados: int
     estilo: str | None
+    presupuesto_maximo: float = 0.0
     cliente_nombre: str
+    cliente_dni: str | None = None
     items: list[ProposalItem]
     costo_total: float
     quality_score: float
@@ -26,3 +28,4 @@ class Proposal(BaseModel):
     generated_at: datetime
     version: int
     narrative: str = ""  # Descripción narrativa generada por Gemini (vacía si no disponible)
+    show_providers: bool = False  # True solo para ejecutivo/admin

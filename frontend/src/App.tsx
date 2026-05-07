@@ -10,6 +10,8 @@ import QuotationResultPage from './pages/QuotationResultPage'
 import AdminProvidersPage from './pages/AdminProvidersPage'
 import AdminRulesPage from './pages/AdminRulesPage'
 import AdminPackagesPage from './pages/AdminPackagesPage'
+import GuestWizardPage from './pages/GuestWizardPage'
+import GuestResultPage from './pages/GuestResultPage'
 import Layout from './components/shared/Layout'
 
 function ProtectedRoute({ children, requiredRole }: {
@@ -45,6 +47,12 @@ export default function App() {
           path="/register"
           element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
         />
+        {/* Guest quotation flow — public, no sidebar */}
+        <Route
+          path="/cotizar"
+          element={isAuthenticated ? <Navigate to="/quotations/new" replace /> : <GuestWizardPage />}
+        />
+        <Route path="/propuesta" element={<GuestResultPage />} />
 
         {/* Protected — inside Layout */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

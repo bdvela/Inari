@@ -24,6 +24,7 @@ from backend.models.models import (
     OptimizationLog,
     Provider,
     Quotation,
+    QuotationChangeLog,
     QuotationDetail,
     QuotationLevel,
     QuotationStatus,
@@ -43,12 +44,33 @@ from backend.modules.visual_analysis.exceptions import VisualAnalysisError
 from backend.modules.visual_analysis.text_parser import parse_description
 from backend.modules.visual_analysis.style_analysis import analyze_style_references
 from backend.modules.visual_analysis.schemas import ParsedDescription
+from backend.modules.visual_analysis.service_inference import merge_inferred_services
 from backend.modules.packages.selector import select_package
 from backend.modules.packages.schemas import ServicePackage as ServicePackageSvc
 from backend.modules.packages.exceptions import NoPackagesConfiguredError
 
 logger = get_logger("api.quotations")
 router = APIRouter(prefix="/quotations", tags=["Cotizaciones"])
+
+
+async def log_change(
+    db: AsyncSession,
+    quotation_id: int,
+    user: User,
+    accion: str,
+    valor_anterior: str | None = None,
+    valor_nuevo: str | None = None,
+) -> None:
+    entry = QuotationChangeLog(
+        cotizacion_id=quotation_id,
+        usuario_nombre=user.nombre,
+        usuario_rol=user.role.value,
+        accion=accion,
+        valor_anterior=valor_anterior,
+        valor_nuevo=valor_nuevo,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(entry)
 
 
 def _luxury_to_quality_weight(luxury_level: int) -> float:
@@ -100,6 +122,8 @@ async def generate_quotation(
     presupuesto_maximo: float = Form(...),
     estilo: str | None = Form(None),
     descripcion: str | None = Form(None),
+    cliente_nombre_manual: str | None = Form(None),
+    cliente_dni: str | None = Form(None),
     image: UploadFile | None = File(None),
     style_images: list[UploadFile] = File(default=[]),
     db: AsyncSession = Depends(get_db),
@@ -121,6 +145,7 @@ async def generate_quotation(
     # Análisis de imágenes de estilo (si se enviaron) — determina quality_weight
     style_result = None
     quality_weight = 1.0
+    valid_images: list[tuple[bytes, str]] = []
     if style_images:
         valid_images = [
             (await img.read(), img.filename or "ref.jpg")
@@ -136,6 +161,10 @@ async def generate_quotation(
                     style_result.aesthetic_style, style_result.luxury_level, quality_weight,
                 )
 
+    # Servicios inferidos de imágenes — se mezclan con rule_result más abajo
+    image_inferred_services: list[str] = []
+    extra_optional: list[str] = []
+
     # 1. Crear evento
     event = Event(
         cliente_id=current_user.id,
@@ -148,6 +177,21 @@ async def generate_quotation(
     )
     db.add(event)
     await db.flush()
+
+    # 1b. Persistir style_images en storage (bytes ya leídos en valid_images)
+    if valid_images:
+        storage = get_storage()
+        for img_bytes, img_filename in valid_images:
+            try:
+                _, public_url = await storage.save(img_bytes, img_filename)
+                db.add(ReferenceImage(
+                    evento_id=event.id,
+                    url_storage=public_url,
+                    nombre_archivo=img_filename,
+                ))
+            except StorageError:
+                logger.warning("No se pudo guardar style_image '%s', continuando", img_filename)
+        await db.flush()
 
     # 2. Storage + análisis visual (si hay imagen)
     visual_result = None
@@ -205,6 +249,24 @@ async def generate_quotation(
         rules=rule_definitions,
     )
     rule_result = evaluate_rules(rule_inp)
+
+    # 3b. Mezclar servicios inferidos de imágenes como opcionales adicionales
+    if style_result and style_result.suggested_services:
+        image_inferred_services = style_result.suggested_services
+        extra_optional = merge_inferred_services(
+            suggested=image_inferred_services,
+            confidence=style_result.confidence,
+            required_services=rule_result.required_services,
+            optional_services=rule_result.optional_services,
+        )
+        if extra_optional:
+            rule_result = rule_result.model_copy(update={
+                "optional_services": rule_result.optional_services + extra_optional,
+            })
+            logger.info(
+                "Servicios inferidos de imágenes añadidos como opcionales: %s",
+                extra_optional,
+            )
 
     # 4. Preparar catálogo de proveedores
     provider_repo = ProviderRepository(db)
@@ -268,6 +330,12 @@ async def generate_quotation(
     quot_repo = QuotationRepository(db)
     version = await quot_repo.get_next_version(event.id)
 
+    cliente_extra = {}
+    if cliente_nombre_manual:
+        cliente_extra["cliente_nombre_manual"] = cliente_nombre_manual.strip()
+    if cliente_dni:
+        cliente_extra["cliente_dni"] = cliente_dni.strip()
+
     q_basica = Quotation(
         cliente_id=current_user.id,
         evento_id=event.id,
@@ -279,6 +347,8 @@ async def generate_quotation(
             "num_invitados": num_invitados,
             "budget": presupuesto_maximo,
             "package_selected": selected_pkg_info,
+            "image_inferred_services": extra_optional,
+            **cliente_extra,
         },
     )
     q_premium = Quotation(
@@ -292,6 +362,8 @@ async def generate_quotation(
             "num_invitados": num_invitados,
             "budget": presupuesto_maximo * 1.3,
             "package_selected": selected_pkg_info,
+            "image_inferred_services": extra_optional,
+            **cliente_extra,
         },
     )
     db.add(q_basica)
@@ -355,6 +427,8 @@ async def generate_quotation(
             created_at=now,
         ))
 
+    for q_log in [q_basica, q_premium]:
+        await log_change(db, q_log.id, current_user, "cotizacion_creada")
     await db.flush()
 
     return {
@@ -366,6 +440,187 @@ async def generate_quotation(
         "basica_costo": res_basica.total_cost if res_basica.feasible else None,
         "premium_costo": res_premium.total_cost if res_premium.feasible else None,
         "version": version,
+        "style_detected": style_result.model_dump() if style_result and style_result.confidence > 0.3 else None,
+        "package_selected": selected_pkg_info,
+        "image_inferred_services": extra_optional,
+    }
+
+
+@router.post("/preview")
+async def preview_quotation(
+    evento_tipo: str = Form(...),
+    evento_fecha: str = Form(...),
+    num_invitados: int = Form(...),
+    presupuesto_maximo: float = Form(...),
+    estilo: str | None = Form(None),
+    descripcion: str | None = Form(None),
+    style_images: list[UploadFile] = File(default=[]),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Genera cotización en memoria sin guardar en BD ni requerir autenticación.
+    Usado por el flujo de cotización para visitantes no registrados.
+    Retorna el resultado completo del optimizer para mostrarlo antes del registro.
+    """
+    from datetime import date as date_type
+    from backend.models.models import BusinessRule
+    from backend.modules.rules_engine.schemas import RuleDefinition
+
+    event_date = date_type.fromisoformat(evento_fecha)
+
+    # Análisis de imágenes de estilo (opcional)
+    style_result = None
+    quality_weight = 1.0
+    if style_images:
+        valid_images = [
+            (await img.read(), img.filename or "ref.jpg")
+            for img in style_images
+            if img.filename
+        ]
+        if valid_images:
+            style_result = await analyze_style_references(valid_images)
+            if style_result and style_result.confidence > 0.3:
+                quality_weight = _luxury_to_quality_weight(style_result.luxury_level)
+
+    # Reglas de negocio (solo lectura)
+    db_rules_result = await db.execute(
+        select(BusinessRule)
+        .where(BusinessRule.tipo_evento == EventType(evento_tipo))
+        .options(selectinload(BusinessRule.servicio))
+    )
+    db_rules = list(db_rules_result.scalars().all())
+    rule_definitions = [
+        RuleDefinition(
+            service_id=str(r.servicio_id),
+            service_name=r.servicio.nombre if r.servicio else str(r.servicio_id),
+            es_obligatorio=r.es_obligatorio,
+            condicion=r.condicion,
+        )
+        for r in db_rules
+    ]
+    rule_inp = RuleEvaluationInput(
+        event_type=evento_tipo,
+        num_invitados=num_invitados,
+        rules=rule_definitions,
+    )
+    rule_result = evaluate_rules(rule_inp)
+
+    # Servicios inferidos de imágenes (opcional)
+    extra_optional: list[str] = []
+    if style_result and style_result.suggested_services:
+        extra_optional = merge_inferred_services(
+            suggested=style_result.suggested_services,
+            confidence=style_result.confidence,
+            required_services=rule_result.required_services,
+            optional_services=rule_result.optional_services,
+        )
+        if extra_optional:
+            rule_result = rule_result.model_copy(update={
+                "optional_services": rule_result.optional_services + extra_optional,
+            })
+
+    # Proveedores disponibles (solo lectura)
+    provider_repo = ProviderRepository(db)
+    db_providers = await provider_repo.get_available_for_event(EventType(evento_tipo), event_date)
+    if not db_providers:
+        raise HTTPException(status_code=422, detail="No hay proveedores disponibles para este tipo de evento y fecha")
+
+    provider_options = [
+        ProviderOption(
+            id=p.id,
+            service_id=p.servicio_id,
+            service_name=p.servicio.nombre if p.servicio else str(p.servicio_id),
+            nombre=p.nombre,
+            costo=p.costo_base,
+            quality_index=p.indice_calidad,
+            tipos_evento_compatibles=p.tipos_evento_compatibles,
+            fechas_no_disponibles=p.fechas_no_disponibles,
+        )
+        for p in db_providers
+    ]
+
+    # Paquetes (solo lectura)
+    package_cost = 0.0
+    selected_pkg_info = None
+    db_pkgs_result = await db.execute(
+        select(BasePackage).where(BasePackage.is_active == True)  # noqa: E712
+    )
+    db_pkgs = list(db_pkgs_result.scalars().all())
+    if db_pkgs:
+        pkg_list = [
+            ServicePackageSvc(id=p.id, name=p.name, content=p.content,
+                              cost=p.cost, min_guests=p.min_guests, max_guests=p.max_guests)
+            for p in db_pkgs
+        ]
+        try:
+            pkg_result = select_package(num_invitados, pkg_list)
+            if pkg_result.selected_package:
+                package_cost = pkg_result.selected_package.cost
+                selected_pkg_info = {
+                    "id": pkg_result.selected_package.id,
+                    "name": pkg_result.selected_package.name,
+                    "cost": pkg_result.selected_package.cost,
+                }
+        except NoPackagesConfiguredError:
+            pass
+
+    available_budget = max(0.0, presupuesto_maximo - package_cost)
+
+    # Optimizar (en memoria, sin guardar)
+    opt_input = OptimizationInput(
+        budget=available_budget,
+        required_services=rule_result.required_services,
+        optional_services=rule_result.optional_services,
+        event_type=evento_tipo,
+        event_date=event_date,
+        providers=provider_options,
+        quality_weight=quality_weight,
+    )
+
+    basica, premium, res_basica, res_premium = generate_proposals(
+        base_input=opt_input,
+        quotation_id_base=0,
+        quotation_id_premium=0,
+        evento_tipo=evento_tipo,
+        evento_fecha=event_date,
+        num_invitados=num_invitados,
+        estilo=estilo,
+        cliente_nombre="",
+        version=1,
+    )
+
+    def _fmt_preview(result, proposal, nivel: str, budget: float) -> dict:
+        if not result.feasible or not proposal:
+            return {"nivel": nivel, "factible": False, "costo_total": 0.0, "quality_score": 0.0, "detalles": []}
+        return {
+            "nivel": nivel,
+            "factible": True,
+            "costo_total": result.total_cost + package_cost,
+            "quality_score": result.quality_score,
+            "algoritmo": result.algorithm_used,
+            "detalles": [
+                {
+                    "servicio": sp.service_name,
+                    "costo": sp.costo,
+                    "es_obligatorio": sp.es_obligatorio,
+                    "quality_index": next((p.quality_index for p in provider_options if p.id == sp.provider_id), 0.0),
+                }
+                for sp in result.selected_providers
+            ],
+        }
+
+    return {
+        "basica": _fmt_preview(res_basica, basica, "basico", available_budget),
+        "premium": _fmt_preview(res_premium, premium, "premium", available_budget * 1.3),
+        "basica_factible": res_basica.feasible,
+        "premium_factible": res_premium.feasible,
+        "num_invitados": num_invitados,
+        "evento_tipo": evento_tipo,
+        "evento_fecha": evento_fecha,
+        "presupuesto_maximo": presupuesto_maximo,
+        "estilo": estilo,
+        "descripcion": descripcion,
+        "image_inferred_services": extra_optional,
         "style_detected": style_result.model_dump() if style_result and style_result.confidence > 0.3 else None,
         "package_selected": selected_pkg_info,
     }
@@ -404,7 +659,11 @@ async def list_my_quotations(
                 f"{q.evento.tipo.value.capitalize()} — {q.evento.fecha.strftime('%d/%m/%Y')}"
                 if q.evento else f"Evento #{q.evento_id}"
             ),
-            "cliente_nombre": q.cliente.nombre if q.cliente else None,
+            "cliente_nombre": (
+                q.parametros_json.get("cliente_nombre_manual")
+                if q.parametros_json and q.parametros_json.get("cliente_nombre_manual")
+                else (q.cliente.nombre if q.cliente else None)
+            ),
         }
         for q in quotations
     ]
@@ -475,8 +734,19 @@ async def get_quotation(
         "num_invitados": q.evento.num_invitados if q.evento else None,
         "estilo": q.evento.estilo if q.evento else None,
         "presupuesto_maximo": q.evento.presupuesto_maximo if q.evento else None,
+        "cliente_nombre": (
+            q.parametros_json.get("cliente_nombre_manual")
+            if q.parametros_json and q.parametros_json.get("cliente_nombre_manual")
+            else (q.cliente.nombre if q.cliente else None)
+        ),
+        "cliente_dni": q.parametros_json.get("cliente_dni") if q.parametros_json else None,
         "style_analysis": q.style_analysis_json,
         "package_selected": q.parametros_json.get("package_selected") if q.parametros_json else None,
+        "image_inferred_services": q.parametros_json.get("image_inferred_services", []) if q.parametros_json else [],
+        "imagenes_referencia": [
+            {"url": img.url_storage, "nombre": img.nombre_archivo}
+            for img in (q.evento.imagenes if q.evento else [])
+        ],
         "detalles": [
             {
                 "id": d.id,
@@ -657,6 +927,14 @@ async def reprocess_quotation(
             created_at=now,
         ))
 
+    old_budget = event.presupuesto_maximo
+    for q_log in [q_basica, q_premium]:
+        await log_change(
+            db, q_log.id, current_user,
+            accion="presupuesto_ajustado",
+            valor_anterior=f"S/ {old_budget:,.0f}",
+            valor_nuevo=f"S/ {body.presupuesto_maximo:,.0f}",
+        )
     await db.flush()
     logger.info("Reproceso exitoso evento %d versión %d", evento_id, version)
 
@@ -790,6 +1068,8 @@ async def swap_provider(
                 detail=f"El proveedor no está disponible en la fecha del evento ({event_date_str})",
             )
 
+    old_provider_nombre = detalle.proveedor.nombre if detalle.proveedor else f"proveedor #{detalle.proveedor_id}"
+
     # Actualizar detalle
     detalle.proveedor_id = new_provider.id
     detalle.costo_negociado = new_provider.costo_base
@@ -819,6 +1099,13 @@ async def swap_provider(
 
     q.costo_total = total_cost
     q.quality_score = sum(qualities) / len(qualities) if qualities else 0.0
+
+    await log_change(
+        db, quotation_id, current_user,
+        accion="proveedor_cambiado",
+        valor_anterior=f"{detalle.nombre_servicio}: {old_provider_nombre}",
+        valor_nuevo=f"{detalle.nombre_servicio}: {new_provider.nombre}",
+    )
     await db.flush()
 
     logger.info(
@@ -891,13 +1178,47 @@ async def get_quotation_pair(
     }
 
 
-@router.get("/{quotation_id}/pdf")
-async def download_pdf(
+@router.get("/{quotation_id}/changelog")
+async def get_changelog(
     quotation_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """CU-01 paso 10: Generar y descargar PDF de propuesta."""
+    """Historial de cambios de una cotización. Solo ejecutivo/admin."""
+    if current_user.role == UserRole.CLIENTE:
+        raise HTTPException(status_code=403, detail="Sin acceso")
+
+    result = await db.execute(
+        select(QuotationChangeLog)
+        .where(QuotationChangeLog.cotizacion_id == quotation_id)
+        .order_by(QuotationChangeLog.created_at.asc())
+    )
+    logs = result.scalars().all()
+    return [
+        {
+            "id": log.id,
+            "accion": log.accion,
+            "usuario_nombre": log.usuario_nombre,
+            "usuario_rol": log.usuario_rol,
+            "valor_anterior": log.valor_anterior,
+            "valor_nuevo": log.valor_nuevo,
+            "created_at": log.created_at,
+        }
+        for log in logs
+    ]
+
+
+@router.get("/{quotation_id}/pdf")
+async def download_pdf(
+    quotation_id: int,
+    version: str = "ejecutivo",
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """CU-01 paso 10: Generar y descargar PDF de propuesta.
+    version=cliente → oculta proveedores (para enviar al cliente).
+    version=ejecutivo → muestra todo (solo ejecutivo/admin).
+    """
     repo = QuotationRepository(db)
     q = await repo.get_by_id(quotation_id)
     if not q:
@@ -946,6 +1267,12 @@ async def download_pdf(
         ],
     )
 
+    cliente_nombre_display = (
+        q.parametros_json.get("cliente_nombre_manual")
+        if q.parametros_json and q.parametros_json.get("cliente_nombre_manual")
+        else current_user.nombre
+    )
+
     proposal = Proposal(
         quotation_id=q.id,
         nivel=q.nivel.value,
@@ -953,7 +1280,9 @@ async def download_pdf(
         evento_fecha=q.evento.fecha if q.evento else datetime.now(timezone.utc).date(),
         num_invitados=q.evento.num_invitados if q.evento else 0,
         estilo=q.evento.estilo if q.evento else None,
-        cliente_nombre=current_user.nombre,
+        presupuesto_maximo=q.evento.presupuesto_maximo if q.evento else 0.0,
+        cliente_nombre=cliente_nombre_display,
+        cliente_dni=q.parametros_json.get("cliente_dni") if q.parametros_json else None,
         items=items,
         costo_total=q.costo_total or 0.0,
         quality_score=q.quality_score or 0.0,
@@ -961,6 +1290,10 @@ async def download_pdf(
         generated_at=datetime.now(timezone.utc),
         version=q.version,
         narrative=narrative_text,
+        show_providers=(
+            current_user.role in (UserRole.EJECUTIVO, UserRole.ADMIN)
+            and version != "cliente"
+        ),
     )
 
     content_bytes = generate_pdf(proposal)

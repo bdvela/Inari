@@ -64,6 +64,9 @@ export default function NewQuotationPage() {
   // Step 2
   const [styleImages, setStyleImages] = useState<StyleImageItem[]>([])
   const [_styleAnalysis, setStyleAnalysis] = useState<StyleAnalysisResult | null>(null)
+  const [clienteNombre, setClienteNombre] = useState('')
+  const [clienteDni, setClienteDni]       = useState('')
+  const [clienteNombreError, setClienteNombreError] = useState('')
   void _styleAnalysis
 
   // Step 3
@@ -136,6 +139,11 @@ export default function NewQuotationPage() {
   }
 
   const onSubmit = async (data: EventForm) => {
+    if (role === 'ejecutivo' && !clienteNombre.trim()) {
+      setClienteNombreError('El nombre del cliente es obligatorio')
+      return
+    }
+    setClienteNombreError('')
     setIsSubmitting(true)
     setSubmitError(null)
     setStep(3)
@@ -148,6 +156,10 @@ export default function NewQuotationPage() {
         if (v !== undefined && v !== '') formData.append(k, String(v))
       })
       styleImages.forEach(item => formData.append('style_images', item.file))
+      if (role === 'ejecutivo') {
+        formData.append('cliente_nombre_manual', clienteNombre.trim())
+        if (clienteDni.trim()) formData.append('cliente_dni', clienteDni.trim())
+      }
 
       const result = await quotationsApi.generate(formData)
       if ((result as { style_detected?: StyleAnalysisResult }).style_detected) {
@@ -522,6 +534,45 @@ export default function NewQuotationPage() {
               </div>
             </div>
           </div>
+
+          {/* Datos del cliente — solo ejecutivo */}
+          {role === 'ejecutivo' && (
+            <div className="glass-raised p-8">
+              <p className="font-mono text-[11px] text-accent tracking-widest uppercase mb-3">Datos del cliente</p>
+              <h3 className="font-display text-xl font-bold tracking-tight text-text-primary mb-1">
+                ¿Para quién es esta cotización?
+              </h3>
+              <p className="text-sm text-text-secondary mb-6">
+                La propuesta quedará registrada a nombre del cliente indicado.
+              </p>
+              <div className="grid grid-cols-2 gap-5">
+                <div className="col-span-2">
+                  <label className="label">Nombre completo <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    value={clienteNombre}
+                    onChange={e => { setClienteNombre(e.target.value); setClienteNombreError('') }}
+                    className="input"
+                    placeholder="ej. María García López"
+                  />
+                  {clienteNombreError && (
+                    <p className="text-danger text-xs mt-1.5">{clienteNombreError}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="label">DNI <span className="text-text-muted text-xs font-normal">(opcional)</span></label>
+                  <input
+                    type="text"
+                    value={clienteDni}
+                    onChange={e => setClienteDni(e.target.value)}
+                    className="input font-mono"
+                    placeholder="ej. 12345678"
+                    maxLength={8}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Style images */}
           <div className="glass-raised p-8">

@@ -2,136 +2,876 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Propuesta de Evento - {{ proposal.nivel | title }}</title>
+  <title>Propuesta INARI GROUP — {{ proposal.cliente_nombre }}</title>
   <style>
-    @page { margin: 2cm; }
+    /* ──────────────────────────────────────────────────────
+       BASE
+    ────────────────────────────────────────────────────── */
+    @page { size: A4; margin: 0; }
+    @page :first { margin: 0; }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a2e; font-size: 10pt; }
 
-    .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 30px; margin-bottom: 20px; }
-    .header h1 { font-size: 22pt; font-weight: 700; letter-spacing: 1px; }
-    .header .subtitle { font-size: 11pt; opacity: 0.8; margin-top: 5px; }
-    .badge { display: inline-block; background: #e94560; color: white; padding: 4px 12px; border-radius: 20px; font-size: 9pt; font-weight: 700; text-transform: uppercase; margin-top: 10px; }
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 10pt;
+      color: #1D1D1F;
+      background: #ffffff;
+      line-height: 1.5;
+    }
 
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
-    .info-card { background: #f8f9fa; border-left: 4px solid #1a1a2e; padding: 15px; }
-    .info-card h3 { font-size: 9pt; text-transform: uppercase; color: #6c757d; margin-bottom: 8px; letter-spacing: 1px; }
-    .info-card .value { font-size: 12pt; font-weight: 600; color: #1a1a2e; }
+    /* ──────────────────────────────────────────────────────
+       PORTADA — fondo oscuro, página completa
+    ────────────────────────────────────────────────────── */
+    .cover {
+      background: #1A1714;
+      width: 210mm;
+      min-height: 297mm;
+      padding: 0;
+      page-break-after: always;
+    }
 
-    .section-title { font-size: 13pt; font-weight: 700; color: #1a1a2e; border-bottom: 2px solid #e94560; padding-bottom: 8px; margin-bottom: 15px; }
+    .cover-stripe {
+      background: #E8572A;
+      height: 5px;
+      width: 100%;
+    }
 
-    table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-    thead tr { background: #1a1a2e; color: white; }
-    thead th { padding: 10px 12px; text-align: left; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5px; }
-    tbody tr:nth-child(even) { background: #f8f9fa; }
-    tbody tr:nth-child(odd) { background: white; }
-    tbody td { padding: 10px 12px; border-bottom: 1px solid #e9ecef; font-size: 10pt; }
-    .badge-required { background: #e94560; color: white; padding: 2px 8px; border-radius: 10px; font-size: 8pt; }
-    .badge-optional { background: #6c757d; color: white; padding: 2px 8px; border-radius: 10px; font-size: 8pt; }
-    .quality-bar { display: inline-block; width: 60px; height: 8px; background: #e9ecef; border-radius: 4px; vertical-align: middle; margin-left: 5px; }
-    .quality-fill { height: 100%; border-radius: 4px; background: #28a745; }
+    .cover-inner {
+      padding: 52px 60px 44px;
+    }
 
-    .totals { background: #1a1a2e; color: white; padding: 20px; border-radius: 4px; margin-bottom: 25px; }
-    .totals-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: center; }
-    .totals-item .label { font-size: 8pt; text-transform: uppercase; opacity: 0.7; margin-bottom: 4px; }
-    .totals-item .amount { font-size: 16pt; font-weight: 700; color: #ffd700; }
-    .totals-item .score { font-size: 16pt; font-weight: 700; color: #00d4aa; }
-    .totals-item .algo { font-size: 12pt; font-weight: 600; opacity: 0.9; }
+    /* Logo */
+    .cover-logo-table {
+      width: 100%;
+      margin-bottom: 56px;
+    }
+    .cover-logo-mark {
+      width: 44px;
+      height: 44px;
+      background: #E8572A;
+      border-radius: 8px;
+      text-align: center;
+      vertical-align: middle;
+      font-family: Georgia, serif;
+      font-size: 20pt;
+      font-weight: 700;
+      color: #1A1714;
+      line-height: 44px;
+    }
+    .cover-logo-text {
+      vertical-align: middle;
+      padding-left: 12px;
+    }
+    .cover-logo-name {
+      font-family: Arial, sans-serif;
+      font-size: 12pt;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      color: #F2EFE9;
+      display: block;
+    }
+    .cover-logo-sub {
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      letter-spacing: 0.18em;
+      color: #E8572A;
+      display: block;
+    }
+    .cover-doc-ref {
+      vertical-align: middle;
+      text-align: right;
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      color: #6E6E73;
+    }
 
-    .narrative-section { margin-bottom: 25px; padding: 18px 20px; background: #fdf9ee; border-left: 3px solid #C9A84C; border-radius: 2px; }
-    .narrative-text { font-size: 10.5pt; color: #2d2d2d; line-height: 1.7; white-space: pre-line; }
-    .footer { text-align: center; font-size: 8pt; color: #6c757d; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e9ecef; }
-    .footer strong { color: #1a1a2e; }
+    /* Eyebrow label */
+    .cover-eyebrow {
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: #E8572A;
+      margin-bottom: 12px;
+    }
+
+    /* Título evento */
+    .cover-event-title {
+      font-family: Georgia, serif;
+      font-size: 34pt;
+      font-weight: 700;
+      color: #F2EFE9;
+      line-height: 1.05;
+      margin-bottom: 10px;
+    }
+
+    /* Fecha */
+    .cover-date {
+      font-family: Georgia, serif;
+      font-size: 14pt;
+      font-style: italic;
+      color: #E8572A;
+      margin-bottom: 36px;
+    }
+
+    /* Separador */
+    .cover-divider {
+      border: none;
+      border-top: 1px solid rgba(232,87,42,0.30);
+      margin-bottom: 28px;
+    }
+
+    /* Badge nivel */
+    .cover-badge {
+      display: inline-block;
+      background: #E8572A;
+      color: #F2EFE9;
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 3px;
+      margin-bottom: 28px;
+    }
+
+    /* Tabla de datos del cliente */
+    .cover-data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 40px;
+    }
+    .cover-data-table td {
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      vertical-align: top;
+    }
+    .cover-data-label {
+      font-family: Arial, sans-serif;
+      font-size: 7pt;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #6E6E73;
+      width: 38%;
+      padding-right: 12px;
+    }
+    .cover-data-value {
+      font-family: Georgia, serif;
+      font-size: 11pt;
+      color: #F2EFE9;
+      font-weight: 700;
+    }
+
+    /* Pie de portada */
+    .cover-footer {
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 18px;
+    }
+    .cover-footer-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .cover-footer-left {
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      color: #4A4845;
+      line-height: 1.7;
+    }
+    .cover-footer-right {
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      color: #4A4845;
+      text-align: right;
+      line-height: 1.7;
+    }
+
+    /* ──────────────────────────────────────────────────────
+       PÁGINAS DE CONTENIDO — fondo crema
+    ────────────────────────────────────────────────────── */
+    .page {
+      background: #F2EFE9;
+      width: 210mm;
+      min-height: 297mm;
+      padding: 36px 52px 44px;
+    }
+
+    /* Cabecera de página */
+    .page-head {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 28px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #1D1D1F;
+    }
+    .page-head-brand {
+      font-family: Arial, sans-serif;
+      font-size: 8pt;
+      font-weight: 700;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: #1D1D1F;
+    }
+    .page-head-info {
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      color: #6E6E73;
+      text-align: right;
+    }
+
+    /* Etiqueta de sección */
+    .section-label {
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #E8572A;
+      padding-bottom: 7px;
+      border-bottom: 1px solid rgba(232,87,42,0.28);
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    /* ──────────────────────────────────────────────────────
+       NARRATIVA
+    ────────────────────────────────────────────────────── */
+    .narrative-box {
+      background: #ffffff;
+      border-left: 3px solid #E8572A;
+      padding: 16px 20px;
+      margin-bottom: 26px;
+    }
+    .narrative-eyebrow {
+      font-family: Arial, sans-serif;
+      font-size: 7pt;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #E8572A;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .narrative-text {
+      font-family: Georgia, serif;
+      font-size: 10.5pt;
+      color: #2d2d2d;
+      line-height: 1.75;
+      font-style: italic;
+    }
+
+    /* ──────────────────────────────────────────────────────
+       SERVICIOS — tabla limpia
+    ────────────────────────────────────────────────────── */
+    .services-group-label {
+      font-family: Arial, sans-serif;
+      font-size: 7pt;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #6E6E73;
+      margin-bottom: 8px;
+      margin-top: 14px;
+      display: block;
+    }
+
+    .service-row {
+      background: #ffffff;
+      border-left: 3px solid #E8572A;
+      margin-bottom: 7px;
+      page-break-inside: avoid;
+    }
+    .service-row.optional {
+      border-left-color: #AEAEB2;
+    }
+    .service-row-inner {
+      padding: 10px 14px;
+    }
+    .service-row-top {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 4px;
+    }
+    .service-name-cell {
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #1D1D1F;
+    }
+    .service-cost-cell {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11pt;
+      font-weight: 700;
+      color: #1D1D1F;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .service-provider-text {
+      font-family: Georgia, serif;
+      font-size: 9.5pt;
+      color: #3d3d3d;
+      margin-bottom: 5px;
+    }
+    .service-provider-text.hidden-provider {
+      color: #AEAEB2;
+      font-style: italic;
+    }
+    .service-meta-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .badge {
+      display: inline;
+      padding: 2px 7px;
+      border-radius: 2px;
+      font-family: Arial, sans-serif;
+      font-size: 7pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .badge-required {
+      background: rgba(232,87,42,0.10);
+      color: #C94A1F;
+      border: 1px solid rgba(232,87,42,0.22);
+    }
+    .badge-optional {
+      background: rgba(174,174,178,0.12);
+      color: #6E6E73;
+      border: 1px solid rgba(174,174,178,0.28);
+    }
+    .quality-text {
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      color: #6E6E73;
+    }
+
+    /* ──────────────────────────────────────────────────────
+       CAJA DE PRECIO — fondo oscuro
+    ────────────────────────────────────────────────────── */
+    .price-box {
+      background: #1A1714;
+      padding: 26px 30px;
+      margin-bottom: 24px;
+      page-break-inside: avoid;
+    }
+    .price-eyebrow {
+      font-family: Arial, sans-serif;
+      font-size: 7pt;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #E8572A;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .price-amount {
+      font-family: Georgia, serif;
+      font-size: 38pt;
+      font-weight: 700;
+      color: #F2EFE9;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .price-sub {
+      font-family: Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #6E6E73;
+      margin-bottom: 18px;
+    }
+    .price-sub strong {
+      color: #E8572A;
+    }
+    .price-stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 16px;
+    }
+    .price-stats-table td {
+      padding: 10px 10px 0 0;
+      vertical-align: top;
+    }
+    .price-stat-label {
+      font-family: Arial, sans-serif;
+      font-size: 7pt;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #4A4845;
+      display: block;
+      margin-bottom: 3px;
+    }
+    .price-stat-value {
+      font-family: Georgia, serif;
+      font-size: 15pt;
+      font-weight: 700;
+      color: #F2EFE9;
+    }
+    .price-stat-value.accent {
+      color: #E8572A;
+    }
+
+    /* ──────────────────────────────────────────────────────
+       FORMA DE PAGO — 4 pasos
+    ────────────────────────────────────────────────────── */
+    .payment-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 6px;
+    }
+    .payment-table td {
+      width: 25%;
+      padding: 0 6px 0 0;
+      vertical-align: top;
+    }
+    .payment-table td:last-child { padding-right: 0; }
+    .payment-step-box {
+      background: #ffffff;
+      padding: 14px 12px;
+      text-align: center;
+    }
+    .payment-step-number {
+      font-family: Georgia, serif;
+      font-size: 20pt;
+      font-weight: 700;
+      color: #E8572A;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+    .payment-step-title {
+      font-family: Arial, sans-serif;
+      font-size: 8pt;
+      font-weight: 700;
+      color: #1D1D1F;
+      margin-bottom: 3px;
+    }
+    .payment-step-desc {
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      color: #6E6E73;
+      line-height: 1.4;
+    }
+    .payment-note {
+      font-family: Georgia, serif;
+      font-size: 8pt;
+      color: #6E6E73;
+      margin-top: 6px;
+    }
+
+    /* ──────────────────────────────────────────────────────
+       CONDICIONES
+    ────────────────────────────────────────────────────── */
+    .condition-row {
+      width: 100%;
+      border-collapse: collapse;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(26,23,20,0.06);
+      page-break-inside: avoid;
+    }
+    .condition-row td {
+      vertical-align: top;
+      padding: 7px 0;
+    }
+    .condition-bullet {
+      width: 18px;
+      padding-top: 5px;
+    }
+    .bullet-dot {
+      width: 6px;
+      height: 6px;
+      background: #E8572A;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .condition-text {
+      font-family: Georgia, serif;
+      font-size: 9.5pt;
+      color: #3d3d3d;
+      line-height: 1.55;
+    }
+
+    /* ──────────────────────────────────────────────────────
+       NOTA IMPORTANTE
+    ────────────────────────────────────────────────────── */
+    .note-box {
+      background: rgba(232,87,42,0.05);
+      border: 1px solid rgba(232,87,42,0.18);
+      padding: 12px 16px;
+      margin-top: 16px;
+      page-break-inside: avoid;
+    }
+    .note-eyebrow {
+      font-family: Arial, sans-serif;
+      font-size: 7pt;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #C94A1F;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .note-text {
+      font-family: Georgia, serif;
+      font-size: 9pt;
+      color: #3d3d3d;
+      line-height: 1.55;
+    }
+
+    /* ──────────────────────────────────────────────────────
+       PIE DE FIRMA
+    ────────────────────────────────────────────────────── */
+    .closing-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-top: 1px solid rgba(26,23,20,0.10);
+      padding-top: 18px;
+      margin-top: 24px;
+    }
+    .closing-brand {
+      font-family: Arial, sans-serif;
+      font-size: 8pt;
+      color: #6E6E73;
+      line-height: 1.7;
+    }
+    .closing-brand strong {
+      color: #1D1D1F;
+      font-size: 9pt;
+    }
+    .closing-signature {
+      text-align: right;
+    }
+    .sig-line {
+      border-top: 1px solid #1D1D1F;
+      width: 160px;
+      margin-left: auto;
+      margin-bottom: 4px;
+    }
+    .sig-label {
+      font-family: Arial, sans-serif;
+      font-size: 7.5pt;
+      color: #6E6E73;
+    }
+
+    /* ── Utilidades ── */
+    .page-break { page-break-before: always; }
+    .no-break { page-break-inside: avoid; }
+    .mt-16 { margin-top: 16px; }
+    .mb-20 { margin-bottom: 20px; }
   </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="subtitle">Propuesta de Servicios para Evento</div>
-  <h1>{{ proposal.evento_tipo | upper }} — {{ proposal.evento_fecha.strftime('%d/%m/%Y') }}</h1>
-  <div class="badge">{{ proposal.nivel | upper }}</div>
+{# ══════════════════════════════════════════ PORTADA ══ #}
+<div class="cover">
+  <div class="cover-stripe"></div>
+  <div class="cover-inner">
+
+    {# Logo + ref doc #}
+    <table class="cover-logo-table" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="width:44px;" class="cover-logo-mark">I</td>
+        <td class="cover-logo-text">
+          <span class="cover-logo-name">INARI</span>
+          <span class="cover-logo-sub">GROUP</span>
+        </td>
+        <td class="cover-doc-ref">
+          Propuesta #{{ proposal.quotation_id }} · v{{ proposal.version }}<br>
+          {{ proposal.generated_at.strftime('%d/%m/%Y') }}
+        </td>
+      </tr>
+    </table>
+
+    {# Tipo + nivel #}
+    <div class="cover-eyebrow">Propuesta de servicios para eventos · Lima, Perú</div>
+    <div class="cover-event-title">
+      {% if proposal.evento_tipo == 'boda' %}Propuesta de<br>Boda
+      {% elif proposal.evento_tipo == 'corporativo' %}Evento<br>Corporativo
+      {% elif proposal.evento_tipo == 'cumpleanos' %}Celebración de<br>Cumpleaños
+      {% elif proposal.evento_tipo == 'quinceanos' %}Fiesta de<br>Quinceañera
+      {% elif proposal.evento_tipo == 'conferencia' %}Conferencia<br>y Negocios
+      {% else %}Propuesta<br>de Evento{% endif %}
+    </div>
+    <div class="cover-date">{{ proposal.evento_fecha.strftime('%d de %B del %Y') | title }}</div>
+
+    <span class="cover-badge">
+      {% if proposal.nivel == 'premium' %}★ Propuesta Premium{% else %}Propuesta Básica{% endif %}
+    </span>
+
+    <hr class="cover-divider">
+
+    {# Datos del cliente #}
+    <table class="cover-data-table" cellpadding="0" cellspacing="0">
+      <tr>
+        <td class="cover-data-label">Cliente</td>
+        <td class="cover-data-value">{{ proposal.cliente_nombre }}</td>
+      </tr>
+      {% if proposal.cliente_dni %}
+      <tr>
+        <td class="cover-data-label">DNI</td>
+        <td class="cover-data-value">{{ proposal.cliente_dni }}</td>
+      </tr>
+      {% endif %}
+      <tr>
+        <td class="cover-data-label">Fecha del evento</td>
+        <td class="cover-data-value">{{ proposal.evento_fecha.strftime('%d/%m/%Y') }}</td>
+      </tr>
+      <tr>
+        <td class="cover-data-label">N° de invitados</td>
+        <td class="cover-data-value">{{ proposal.num_invitados }} personas</td>
+      </tr>
+      <tr>
+        <td class="cover-data-label">Estilo</td>
+        <td class="cover-data-value">{{ proposal.estilo or 'A definir' }}</td>
+      </tr>
+    </table>
+
+    {# Pie portada #}
+    <div class="cover-footer">
+      <table class="cover-footer-table" cellpadding="0" cellspacing="0">
+        <tr>
+          <td class="cover-footer-left">
+            INARI GROUP S.A.C. · Lima, Perú<br>
+            contacto@inarigroup.pe
+          </td>
+          <td class="cover-footer-right">
+            Optimizada con inteligencia artificial<br>
+            Precios referenciales sujetos a confirmación
+          </td>
+        </tr>
+      </table>
+    </div>
+
+  </div>
 </div>
 
-<div class="info-grid">
-  <div class="info-card">
-    <h3>Cliente</h3>
-    <div class="value">{{ proposal.cliente_nombre }}</div>
-  </div>
-  <div class="info-card">
-    <h3>Invitados</h3>
-    <div class="value">{{ proposal.num_invitados }} personas</div>
-  </div>
-  <div class="info-card">
-    <h3>Estilo</h3>
-    <div class="value">{{ proposal.estilo or 'Por definir' }}</div>
-  </div>
-  <div class="info-card">
-    <h3>Versión / Generada</h3>
-    <div class="value">v{{ proposal.version }} · {{ proposal.generated_at.strftime('%d/%m/%Y %H:%M') }}</div>
-  </div>
-</div>
-
-{% if proposal.narrative %}
-<div class="narrative-section">
-  <div class="section-title" style="margin-bottom: 10px;">Descripción de tu evento</div>
-  <div class="narrative-text">{{ proposal.narrative }}</div>
-</div>
-{% endif %}
-
-<div class="section-title">Servicios Seleccionados</div>
-
-<table>
-  <thead>
+{# ══════════════════════════════════════ SERVICIOS ══ #}
+<div class="page">
+  <table class="page-head" cellpadding="0" cellspacing="0">
     <tr>
-      <th>Servicio</th>
-      <th>Proveedor</th>
-      <th>Tipo</th>
-      <th>Calidad</th>
-      <th>Costo (S/.)</th>
+      <td class="page-head-brand">INARI GROUP</td>
+      <td class="page-head-info">{{ proposal.cliente_nombre }} &nbsp;·&nbsp; {{ proposal.evento_fecha.strftime('%d/%m/%Y') }}</td>
     </tr>
-  </thead>
-  <tbody>
-    {% for item in proposal.items %}
+  </table>
+
+  {% if proposal.narrative %}
+  <div class="narrative-box">
+    <span class="narrative-eyebrow">Propuesta personalizada para tu evento</span>
+    <p class="narrative-text">{{ proposal.narrative }}</p>
+  </div>
+  {% endif %}
+
+  <span class="section-label">Servicios incluidos en tu propuesta</span>
+
+  {% set required_items = proposal.items | selectattr('es_obligatorio') | list %}
+  {% set optional_items = proposal.items | rejectattr('es_obligatorio') | list %}
+
+  {% if required_items %}
+  <span class="services-group-label">Servicios principales</span>
+  {% for item in required_items %}
+  <div class="service-row no-break">
+    <div class="service-row-inner">
+      <table class="service-row-top" cellpadding="0" cellspacing="0">
+        <tr>
+          <td class="service-name-cell">{{ item.servicio | title }}</td>
+          <td class="service-cost-cell">S/ {{ "{:,.0f}".format(item.costo) }}</td>
+        </tr>
+      </table>
+      {% if proposal.show_providers %}
+      <p class="service-provider-text">{{ item.proveedor }}</p>
+      {% else %}
+      <p class="service-provider-text hidden-provider">Proveedor seleccionado por INARI GROUP</p>
+      {% endif %}
+      <table class="service-meta-table" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="width:auto;"><span class="badge badge-required">Incluido</span></td>
+          {% if proposal.show_providers %}
+          <td style="text-align:right;" class="quality-text">
+            Calidad {{ "%.0f"|format(item.quality_index * 100) }}%
+          </td>
+          {% endif %}
+        </tr>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% if optional_items %}
+  <span class="services-group-label" style="margin-top:20px;">Servicios adicionales incluidos según presupuesto</span>
+  {% for item in optional_items %}
+  <div class="service-row optional no-break">
+    <div class="service-row-inner">
+      <table class="service-row-top" cellpadding="0" cellspacing="0">
+        <tr>
+          <td class="service-name-cell">{{ item.servicio | title }}</td>
+          <td class="service-cost-cell">S/ {{ "{:,.0f}".format(item.costo) }}</td>
+        </tr>
+      </table>
+      {% if proposal.show_providers %}
+      <p class="service-provider-text">{{ item.proveedor }}</p>
+      {% else %}
+      <p class="service-provider-text hidden-provider">Proveedor seleccionado por INARI GROUP</p>
+      {% endif %}
+      <table class="service-meta-table" cellpadding="0" cellspacing="0">
+        <tr>
+          <td><span class="badge badge-optional">Adicional</span></td>
+          {% if proposal.show_providers %}
+          <td style="text-align:right;" class="quality-text">
+            Calidad {{ "%.0f"|format(item.quality_index * 100) }}%
+          </td>
+          {% endif %}
+        </tr>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+</div>
+
+{# ══════════════════════════════ INVERSIÓN Y TÉRMINOS ══ #}
+<div class="page page-break">
+  <table class="page-head" cellpadding="0" cellspacing="0">
     <tr>
-      <td><strong>{{ item.servicio | title }}</strong></td>
-      <td>{{ item.proveedor }}</td>
-      <td>
-        {% if item.es_obligatorio %}
-          <span class="badge-required">Obligatorio</span>
-        {% else %}
-          <span class="badge-optional">Opcional</span>
+      <td class="page-head-brand">INARI GROUP</td>
+      <td class="page-head-info">Propuesta #{{ proposal.quotation_id }} &nbsp;·&nbsp; {{ proposal.nivel | title }}</td>
+    </tr>
+  </table>
+
+  {# Precio #}
+  <span class="section-label">Resumen de inversión</span>
+  <div class="price-box no-break">
+    <span class="price-eyebrow">Inversión total para tu evento</span>
+    <div class="price-amount">S/ {{ "{:,.0f}".format(proposal.costo_total) }}</div>
+    <div class="price-sub">
+      Para <strong>{{ proposal.num_invitados }} personas</strong>
+      &nbsp;·&nbsp;
+      S/ {{ "{:,.0f}".format(proposal.costo_total / proposal.num_invitados if proposal.num_invitados > 0 else 0) }} por invitado
+      {% if proposal.nivel == 'premium' %}&nbsp;·&nbsp; <strong>Propuesta Premium</strong>{% endif %}
+    </div>
+    <table class="price-stats-table" cellpadding="0" cellspacing="0">
+      <tr>
+        {% if proposal.show_providers %}
+        <td>
+          <span class="price-stat-label">Índice de calidad</span>
+          <span class="price-stat-value accent">{{ "%.0f"|format(proposal.quality_score * 100) }}%</span>
+        </td>
         {% endif %}
+        <td>
+          <span class="price-stat-label">Servicios incluidos</span>
+          <span class="price-stat-value">{{ proposal.items | length }}</span>
+        </td>
+        <td>
+          <span class="price-stat-label">Principales</span>
+          <span class="price-stat-value">{{ proposal.items | selectattr('es_obligatorio') | list | length }}</span>
+        </td>
+        <td>
+          <span class="price-stat-label">Adicionales</span>
+          <span class="price-stat-value">{{ proposal.items | rejectattr('es_obligatorio') | list | length }}</span>
+        </td>
+        {% if proposal.show_providers %}
+        <td style="text-align:right;">
+          <span class="price-stat-label">Algoritmo</span>
+          <span class="price-stat-value" style="font-size:9pt;">{{ proposal.algorithm_used }}</span>
+        </td>
+        {% endif %}
+      </tr>
+    </table>
+  </div>
+
+  {# Forma de pago #}
+  <span class="section-label mt-16">Forma de pago</span>
+  <table class="payment-table" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        <div class="payment-step-box">
+          <div class="payment-step-number">S/ 500</div>
+          <div class="payment-step-title">Separación</div>
+          <div class="payment-step-desc">Reserva de fecha.<br>No reembolsable.</div>
+        </div>
       </td>
       <td>
-        {{ "%.0f"|format(item.quality_index * 100) }}%
-        <span class="quality-bar"><span class="quality-fill" style="width: {{ "%.0f"|format(item.quality_index * 100) }}%"></span></span>
+        <div class="payment-step-box">
+          <div class="payment-step-number">50%</div>
+          <div class="payment-step-title">Firma contrato</div>
+          <div class="payment-step-desc">Al momento de<br>firmar el contrato.</div>
+        </div>
       </td>
-      <td><strong>{{ "S/. {:,.2f}".format(item.costo) }}</strong></td>
+      <td>
+        <div class="payment-step-box">
+          <div class="payment-step-number">25%</div>
+          <div class="payment-step-title">3 meses antes</div>
+          <div class="payment-step-desc">Del evento<br>pactado.</div>
+        </div>
+      </td>
+      <td>
+        <div class="payment-step-box">
+          <div class="payment-step-number">25%</div>
+          <div class="payment-step-title">15 días antes</div>
+          <div class="payment-step-desc">Saldo final<br>del evento.</div>
+        </div>
+      </td>
     </tr>
-    {% endfor %}
-  </tbody>
-</table>
+  </table>
+  <p class="payment-note">* Los costos no incluyen I.G.V. Se emite boleta. Factura disponible con I.G.V adicional.</p>
 
-<div class="totals">
-  <div class="totals-grid">
-    <div class="totals-item">
-      <div class="label">Costo Total</div>
-      <div class="amount">S/. {{ "{:,.2f}".format(proposal.costo_total) }}</div>
-    </div>
-    <div class="totals-item">
-      <div class="label">Score de Calidad</div>
-      <div class="score">{{ "%.1f"|format(proposal.quality_score * 100) }}%</div>
-    </div>
-    <div class="totals-item">
-      <div class="label">Algoritmo</div>
-      <div class="algo">{{ proposal.algorithm_used }}</div>
-    </div>
+  {# Condiciones #}
+  <span class="section-label mt-16">Condiciones del servicio</span>
+  <table cellpadding="0" cellspacing="0" style="width:100%;">
+    <tr class="condition-row">
+      <td class="condition-bullet"><span class="bullet-dot"></span></td>
+      <td class="condition-text">El depósito de separación de S/ 500 no es reembolsable bajo ninguna circunstancia.</td>
+    </tr>
+    <tr class="condition-row">
+      <td class="condition-bullet"><span class="bullet-dot"></span></td>
+      <td class="condition-text">1 mes antes del evento debe estar cancelado el 100% del monto pactado.</td>
+    </tr>
+    <tr class="condition-row">
+      <td class="condition-bullet"><span class="bullet-dot"></span></td>
+      <td class="condition-text">Si el evento no se realiza en la fecha pactada, no procede devolución parcial ni total del dinero invertido.</td>
+    </tr>
+    <tr class="condition-row">
+      <td class="condition-bullet"><span class="bullet-dot"></span></td>
+      <td class="condition-text">Daños, pérdidas o roturas de mobiliario y menaje se reportan al cliente dentro de 1 día útil posterior al evento.</td>
+    </tr>
+    <tr class="condition-row">
+      <td class="condition-bullet"><span class="bullet-dot"></span></td>
+      <td class="condition-text">Se realiza un contrato firmado que detalla todos los servicios contratados.</td>
+    </tr>
+    <tr class="condition-row">
+      <td class="condition-bullet"><span class="bullet-dot"></span></td>
+      <td class="condition-text">Esta propuesta fue generada con inteligencia artificial y optimización algorítmica. Los precios son referenciales y sujetos a confirmación por el equipo INARI GROUP.</td>
+    </tr>
+  </table>
+
+  {# Nota #}
+  <div class="note-box no-break">
+    <span class="note-eyebrow">Nota importante</span>
+    <p class="note-text">
+      Esta cotización cubre los servicios detallados en la propuesta. Servicios adicionales como grupo
+      electrógeno, personal de seguridad, personal de limpieza, decoraciones temáticas especiales o
+      equipamiento no listado se cotizan por separado según requerimiento del cliente.
+    </p>
   </div>
-</div>
 
-<div class="footer">
-  <strong>Sistema Inteligente de Propuestas de Eventos</strong> · Cotización #{{ proposal.quotation_id }} ·
-  Documento generado automáticamente. Precios referenciales sujetos a confirmación.
+  {# Firma #}
+  <div class="closing-table" style="margin-top:24px; padding-top:18px; border-top:1px solid rgba(26,23,20,0.10);">
+    <table style="width:100%;" cellpadding="0" cellspacing="0">
+      <tr>
+        <td class="closing-brand">
+          <strong>INARI GROUP S.A.C.</strong><br>
+          Empresa de organización de eventos — Lima, Perú<br>
+          contacto@inarigroup.pe
+        </td>
+        <td class="closing-signature" style="text-align:right; vertical-align:bottom;">
+          <div class="sig-line"></div>
+          <div class="sig-label">Firma del cliente</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
 </div>
 
 </body>

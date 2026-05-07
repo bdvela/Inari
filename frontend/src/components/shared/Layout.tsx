@@ -65,7 +65,7 @@ export default function Layout() {
         <div style={{ padding: '4px 8px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
           <span className="logo-mark">I</span>
           <span style={{
-            fontFamily: 'Syne, sans-serif', fontWeight: 800,
+            fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 800,
             fontSize: 13, letterSpacing: '0.18em', lineHeight: 1.1, color: '#1D1D1F',
           }}>
             INARI<br/>
@@ -73,48 +73,77 @@ export default function Layout() {
           </span>
         </div>
 
-        {/* Nav section label */}
-        <div style={{
-          fontSize: 11, color: '#AEAEB2',
-          textTransform: 'uppercase' as const,
-          letterSpacing: '0.10em',
-          padding: '8px 12px 4px',
-        }}>
-          General
-        </div>
-
         {/* Nav items */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-          <NavLink to="/dashboard" end style={({ isActive }) => navItemStyle(isActive)}>
-            {({ isActive }) => (
-              <>
-                <LayoutDashboard size={17} style={iconStyle(isActive)} />
-                Dashboard
-              </>
-            )}
-          </NavLink>
 
+          {/* ── Cliente / Ejecutivo ── */}
           {role !== 'admin' && (
-            <NavLink to="/quotations/new" style={({ isActive }) => navItemStyle(isActive)}>
-              {({ isActive }) => (
-                <>
-                  <PlusCircle size={17} style={iconStyle(isActive)} />
-                  Nueva cotización
-                </>
-              )}
-            </NavLink>
-          )}
-
-          {(role === 'admin' || role === 'ejecutivo') && (
             <>
+              <div style={{
+                fontSize: 11, color: '#AEAEB2',
+                textTransform: 'uppercase' as const,
+                letterSpacing: '0.10em',
+                padding: '8px 12px 4px',
+              }}>
+                General
+              </div>
+
+              <NavLink to="/dashboard" end style={({ isActive }) => navItemStyle(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <LayoutDashboard size={17} style={iconStyle(isActive)} />
+                    Dashboard
+                  </>
+                )}
+              </NavLink>
+
+              <NavLink to="/quotations/new" style={({ isActive }) => navItemStyle(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <PlusCircle size={17} style={iconStyle(isActive)} />
+                    Nueva cotización
+                  </>
+                )}
+              </NavLink>
+
               <div style={{
                 fontSize: 11, color: '#AEAEB2',
                 textTransform: 'uppercase' as const,
                 letterSpacing: '0.10em',
                 padding: '16px 12px 4px',
               }}>
+                Cuenta
+              </div>
+              <button
+                onClick={() => navigate('/dashboard')}
+                style={{ ...navItemStyle(false), border: 'none', background: 'transparent', width: '100%', textAlign: 'left' as const }}
+              >
+                <Settings size={17} style={iconStyle(false)} />
+                Ajustes
+              </button>
+            </>
+          )}
+
+          {/* ── Admin ── */}
+          {role === 'admin' && (
+            <>
+              <div style={{
+                fontSize: 11, color: '#AEAEB2',
+                textTransform: 'uppercase' as const,
+                letterSpacing: '0.10em',
+                padding: '8px 12px 4px',
+              }}>
                 Administración
               </div>
+
+              <NavLink to="/admin/providers" style={({ isActive }) => navItemStyle(isActive)}>
+                {({ isActive }) => (
+                  <>
+                    <Users size={17} style={iconStyle(isActive)} />
+                    Proveedores
+                  </>
+                )}
+              </NavLink>
 
               <NavLink to="/admin/rules" style={({ isActive }) => navItemStyle(isActive)}>
                 {({ isActive }) => (
@@ -133,35 +162,9 @@ export default function Layout() {
                   </>
                 )}
               </NavLink>
-
-              {role === 'admin' && (
-                <NavLink to="/admin/providers" style={({ isActive }) => navItemStyle(isActive)}>
-                  {({ isActive }) => (
-                    <>
-                      <Users size={17} style={iconStyle(isActive)} />
-                      Proveedores
-                    </>
-                  )}
-                </NavLink>
-              )}
             </>
           )}
 
-          <div style={{
-            fontSize: 11, color: '#AEAEB2',
-            textTransform: 'uppercase' as const,
-            letterSpacing: '0.10em',
-            padding: '16px 12px 4px',
-          }}>
-            Cuenta
-          </div>
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{ ...navItemStyle(false), border: 'none', background: 'transparent', width: '100%', textAlign: 'left' as const }}
-          >
-            <Settings size={17} style={iconStyle(false)} />
-            Ajustes
-          </button>
         </div>
 
         {/* User card */}

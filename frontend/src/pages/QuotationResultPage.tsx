@@ -2,6 +2,7 @@
  * Vista de resultado de cotización. CU-01 paso 10 + CU-02 ajuste/reproceso.
  */
 import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { quotationsApi } from '../services/api'
-import type { GenerateQuotationResult, AlternativeProvider } from '../types'
+import type { GenerateQuotationResult, AlternativeProvider, ChangeLogEntry } from '../types'
 import ConfirmModal from '../components/shared/ConfirmModal'
 import QualityBar from '../components/shared/QualityBar'
 import { useAuth } from '../context/AuthContext'
@@ -23,6 +24,298 @@ import { useAuth } from '../context/AuthContext'
 const EVENT_LABELS: Record<string, string> = {
   boda: 'Boda', corporativo: 'Corporativo', cumpleanos: 'Cumpleaños',
   quinceanos: 'Quinceañera', conferencia: 'Conferencia', otro: 'Otro',
+}
+
+import type { StyleAnalysisResult as StyleAnalysis } from '../types'
+
+const LUXURY_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: 'Muy sencillo',  color: '#8A8680' },
+  2: { label: 'Económico',     color: '#6E6E73' },
+  3: { label: 'Intermedio',    color: '#E8572A' },
+  4: { label: 'Premium',       color: '#C94A1F' },
+  5: { label: 'Ultra lujo',    color: '#a83010' },
+}
+
+function ImageLightbox({
+  images,
+  initialIndex,
+  onClose,
+}: {
+  images: { url: string; nombre: string }[]
+  initialIndex: number
+  onClose: () => void
+}) {
+  const [idx, setIdx] = useState(initialIndex)
+  const total = images.length
+  const prev = () => setIdx(i => (i - 1 + total) % total)
+  const next = () => setIdx(i => (i + 1) % total)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowLeft') prev()
+      if (e.key === 'ArrowRight') next()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const img = images[idx]
+
+  return createPortal(
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 9999 }}
+      className="flex items-center justify-center bg-black/85 backdrop-blur-md"
+      onClick={onClose}
+    >
+      {/* Cerrar */}
+      <button
+        onClick={onClose}
+        style={{ position: 'fixed', top: 20, right: 24, zIndex: 10000 }}
+        className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xl font-light transition-colors"
+        aria-label="Cerrar"
+      >
+        ×
+      </button>
+
+      {/* Contador */}
+      {total > 1 && (
+        <div style={{ position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 10000 }}
+          className="text-white/50 text-xs tracking-widest"
+        >
+          {idx + 1} / {total}
+        </div>
+      )}
+
+      {/* Flecha izquierda */}
+      {total > 1 && (
+        <button
+          onClick={e => { e.stopPropagation(); prev() }}
+          style={{ position: 'fixed', left: 24, top: '50%', transform: 'translateY(-50%)', zIndex: 10000 }}
+          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-2xl transition-colors"
+          aria-label="Anterior"
+        >
+          ‹
+        </button>
+      )}
+
+      {/* Imagen */}
+      <div className="relative px-20" onClick={e => e.stopPropagation()}>
+        <img
+          key={img.url}
+          src={img.url}
+          alt={img.nombre}
+          style={{ maxWidth: '80vw', maxHeight: '82vh' }}
+          className="rounded-2xl object-contain shadow-2xl"
+        />
+        <p className="text-center text-white/40 text-xs mt-3 truncate">{img.nombre}</p>
+      </div>
+
+      {/* Flecha derecha */}
+      {total > 1 && (
+        <button
+          onClick={e => { e.stopPropagation(); next() }}
+          style={{ position: 'fixed', right: 24, top: '50%', transform: 'translateY(-50%)', zIndex: 10000 }}
+          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-2xl transition-colors"
+          aria-label="Siguiente"
+        >
+          ›
+        </button>
+      )}
+    </div>,
+    document.body
+  )
+}
+
+function StyleAnalysisCard({
+  analysis,
+  images = [],
+}: {
+  analysis: StyleAnalysis
+  images?: { url: string; nombre: string }[]
+}) {
+  const lux = LUXURY_LABELS[analysis.luxury_level] ?? LUXURY_LABELS[3]
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+
+  return (
+    <div className="glass mb-6 p-7">
+      {lightboxIdx !== null && (
+        <ImageLightbox images={images} initialIndex={lightboxIdx} onClose={() => setLightboxIdx(null)} />
+      )}
+
+      <div className="flex items-center gap-2.5 mb-5">
+        <Sparkles size={15} className="text-accent" />
+        <h3 className="font-display text-lg font-bold tracking-tight">Análisis de referencias de estilo</h3>
+        <span className="badge text-[10px] ml-auto">
+          Confianza {Math.round(analysis.confidence * 100)}%
+        </span>
+      </div>
+
+      {/* Thumbnails de imágenes subidas */}
+      {images.length > 0 && (
+        <div className="flex gap-3 mb-5">
+          {images.map((img, i) => (
+            <button
+              key={i}
+              className="relative group cursor-zoom-in focus:outline-none"
+              onClick={() => setLightboxIdx(i)}
+              title="Ver en grande"
+            >
+              <img
+                src={img.url}
+                alt={img.nombre}
+                className="w-24 h-24 rounded-xl object-cover border border-black/8 transition-transform group-hover:scale-105"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+              <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium transition-opacity drop-shadow">⊕</span>
+              </div>
+            </button>
+          ))}
+          <div className="flex items-end pb-1">
+            <span className="text-xs text-text-muted">
+              {images.length} imagen{images.length > 1 ? 'es' : ''} analizada{images.length > 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-6">
+        {/* Izquierda: estilo + nivel + colores */}
+        <div className="space-y-4">
+          <div>
+            <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">Estilo detectado</p>
+            <div className="flex items-center gap-3">
+              <span className="font-display text-xl font-bold capitalize">{analysis.aesthetic_style}</span>
+              <span className="badge text-[11px] font-semibold" style={{ color: lux.color, background: `${lux.color}15`, borderColor: `${lux.color}30` }}>
+                {'★'.repeat(analysis.luxury_level)} {lux.label}
+              </span>
+            </div>
+          </div>
+
+          {analysis.dominant_colors.length > 0 && (
+            <div>
+              <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">Paleta de colores</p>
+              <div className="flex flex-wrap gap-2">
+                {analysis.dominant_colors.map(color => (
+                  <span key={color} className="flex items-center gap-1.5 text-xs text-text-secondary px-2.5 py-1 rounded-lg border border-black/8 bg-white/60">
+                    <span className="w-3 h-3 rounded-full border border-black/10 flex-shrink-0"
+                      style={{ background: color.toLowerCase().includes('blanco') ? '#f8f6f0'
+                        : color.toLowerCase().includes('negro') ? '#1a1714'
+                        : color.toLowerCase().includes('dorado') ? '#C9A84C'
+                        : color.toLowerCase().includes('rosado') || color.toLowerCase().includes('rosa') ? '#f4a0b0'
+                        : color.toLowerCase().includes('verde') ? '#6a9e6a'
+                        : color.toLowerCase().includes('azul') ? '#6a8ab0'
+                        : color.toLowerCase().includes('rojo') ? '#c94a4a'
+                        : color.toLowerCase().includes('crema') || color.toLowerCase().includes('marfil') ? '#f2efe9'
+                        : color.toLowerCase().includes('gris') ? '#9a9590'
+                        : '#E8572A' }} />
+                    {color}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {analysis.style_keywords.length > 0 && (
+            <div>
+              <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">Palabras clave</p>
+              <div className="flex flex-wrap gap-1.5">
+                {analysis.style_keywords.map(kw => (
+                  <span key={kw} className="badge badge-neutral text-[11px]">{kw}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Derecha: elementos + servicios */}
+        <div className="space-y-4">
+          {analysis.visual_elements.length > 0 && (
+            <div>
+              <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">Elementos decorativos detectados</p>
+              <ul className="space-y-1.5">
+                {analysis.visual_elements.map(el => (
+                  <li key={el} className="flex items-start gap-2 text-sm text-text-secondary">
+                    <span className="text-accent mt-0.5 flex-shrink-0">◆</span> {el}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {analysis.suggested_services.length > 0 && (
+            <div>
+              <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">Servicios inferidos</p>
+              <div className="flex flex-wrap gap-1.5">
+                {analysis.suggested_services.map(svc => (
+                  <span key={svc} className="badge badge-accent text-[11px] capitalize">{svc}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InferredServicesCard({
+  inferred,
+  styleAnalysis,
+}: {
+  inferred: string[]
+  styleAnalysis: import('../types').StyleAnalysisResult | null
+}) {
+  const hasImages = (styleAnalysis?.confidence ?? 0) > 0
+
+  return (
+    <div className="glass mb-6 p-7">
+      <div className="flex items-center gap-2.5 mb-5">
+        <span className="text-base">📷</span>
+        <h3 className="font-display text-lg font-bold tracking-tight">Servicios detectados visualmente</h3>
+        <span className="badge text-[10px] ml-auto">
+          Inferidos de imágenes de referencia
+        </span>
+      </div>
+
+      {!hasImages ? (
+        <p className="text-sm text-text-secondary">
+          El cliente no subió imágenes de referencia. Los servicios provienen únicamente
+          de la descripción de texto y las reglas de negocio.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {inferred.length > 0 ? (
+            <div>
+              <p className="text-[11px] text-text-muted uppercase tracking-wider mb-3">
+                Añadidos al optimizer como opcionales
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {inferred.map(svc => (
+                  <span key={svc} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                    style={{ background: 'rgba(52,199,89,0.10)', color: '#1f7a3a', border: '1px solid rgba(52,199,89,0.24)' }}>
+                    ✅ {svc}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-text-muted mt-3">
+                Confianza del análisis visual: {Math.round((styleAnalysis?.confidence ?? 0) * 100)}% · Umbral aplicado: 60%
+              </p>
+            </div>
+          ) : (
+            <div className="text-sm text-text-secondary space-y-1">
+              <p>Se analizaron las imágenes pero no se añadieron servicios adicionales.</p>
+              <p className="text-text-muted text-xs">
+                Posibles razones: los servicios inferidos ya estaban declarados en texto,
+                confianza {'<'} 60%, o sin proveedores disponibles.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function DeltaBadge({ value, unit = '' }: { value: number; unit?: string }) {
@@ -91,6 +384,57 @@ const reprocessSchema = z.object({
 })
 type ReprocessForm = z.infer<typeof reprocessSchema>
 
+const ACCION_LABELS: Record<string, string> = {
+  cotizacion_creada:  'Cotización creada',
+  presupuesto_ajustado: 'Presupuesto ajustado',
+  proveedor_cambiado: 'Proveedor cambiado',
+  narrativa_editada:  'Narrativa editada',
+  reproceso:          'Reproceso',
+}
+
+function ChangelogPanel({ entries }: { entries: ChangeLogEntry[] }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="glass mb-6 p-7">
+      <button
+        className="flex items-center gap-2.5 w-full text-left"
+        onClick={() => setOpen(o => !o)}
+      >
+        <History size={15} className="text-accent" />
+        <span className="font-display text-lg font-bold tracking-tight flex-1">Historial de cambios</span>
+        <span className="text-xs text-text-muted">{entries.length} entrada{entries.length !== 1 ? 's' : ''}</span>
+        {open ? <ChevronUp size={15} className="text-text-muted" /> : <ChevronDown size={15} className="text-text-muted" />}
+      </button>
+
+      {open && (
+        <div className="mt-5 space-y-3">
+          {entries.map(e => (
+            <div key={e.id} className="flex gap-3 text-sm border-l-2 border-accent/20 pl-4 py-1">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-semibold text-text-primary">{ACCION_LABELS[e.accion] ?? e.accion}</span>
+                  <span className="badge text-[10px]">{e.usuario_rol}</span>
+                </div>
+                <p className="text-text-secondary text-xs">{e.usuario_nombre}</p>
+                {(e.valor_anterior || e.valor_nuevo) && (
+                  <div className="flex items-center gap-1.5 mt-1 text-xs text-text-muted font-mono">
+                    {e.valor_anterior && <span className="line-through opacity-60">{e.valor_anterior}</span>}
+                    {e.valor_anterior && e.valor_nuevo && <ArrowRight size={10} />}
+                    {e.valor_nuevo && <span className="text-ok font-semibold">{e.valor_nuevo}</span>}
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-text-muted whitespace-nowrap pt-0.5">
+                {new Date(e.created_at).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function QuotationResultPage() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
@@ -110,6 +454,7 @@ export default function QuotationResultPage() {
   const [openAlternativesId, setOpenAlternativesId] = useState<number | null>(null)
   const [showHistory, setShowHistory]             = useState(false)
   const [pendingReprocessData, setPendingReprocessData] = useState<ReprocessForm | null>(null)
+  const [pdfLoading, setPdfLoading] = useState<'ejecutivo' | 'cliente' | null>(null)
 
   const { data: quotation, isLoading, error } = useQuery({
     queryKey: ['quotation', id],
@@ -130,6 +475,12 @@ export default function QuotationResultPage() {
     enabled: !!quotation,
   })
 
+  const { data: changelog } = useQuery({
+    queryKey: ['changelog', id],
+    queryFn: () => quotationsApi.getChangelog(Number(id)),
+    enabled: !!id && canSeeProviders,
+  })
+
   const versionHistory = useMemo(() => {
     if (!allQuotations || !quotation) return []
     return allQuotations
@@ -141,6 +492,19 @@ export default function QuotationResultPage() {
     resolver: zodResolver(reprocessSchema),
     defaultValues: { incluir_opcionales: true },
   })
+
+  // useEffect DEBE estar antes de los early returns para no violar Rules of Hooks
+  useEffect(() => {
+    if (!quotation) return
+    const isComp = quotation.estado === 'completado'
+    if ((quotation as unknown as { narrativa?: string }).narrativa) {
+      const n = (quotation as unknown as { narrativa: string }).narrativa
+      setNarrativa(n)
+      setNarrativaGuardada(n)
+    } else if (isComp) {
+      setNarrativaError(true)
+    }
+  }, [quotation?.id, quotation?.estado])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const reprocessMutation = useMutation({
     mutationFn: (data: ReprocessForm) => quotationsApi.reprocess(quotation!.evento_id, data),
@@ -169,12 +533,15 @@ export default function QuotationResultPage() {
     onError: () => toast.error('Error al cambiar proveedor'),
   })
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = async (version: 'ejecutivo' | 'cliente' = 'ejecutivo') => {
+    setPdfLoading(version)
     try {
-      await quotationsApi.downloadPdf(Number(id))
-      toast.success('Propuesta lista')
+      await quotationsApi.downloadPdf(Number(id), version)
+      toast.success(version === 'cliente' ? 'Versión cliente lista' : 'Propuesta lista')
     } catch {
       toast.error('Error al generar el documento')
+    } finally {
+      setPdfLoading(null)
     }
   }
 
@@ -211,27 +578,29 @@ export default function QuotationResultPage() {
     </div>
   )
 
-  if (error || !quotation) return (
-    <div className="mesh min-h-screen p-10">
-      <div className="glass p-16 text-center">
-        <XCircle size={28} className="text-danger mx-auto mb-4" />
-        <p className="font-semibold mb-1.5">No se pudo cargar la cotización</p>
-        <p className="text-sm text-text-secondary">Intenta nuevamente o regresa al dashboard</p>
+  if (error || !quotation) {
+    const is403 = (error as { response?: { status?: number } })?.response?.status === 403
+    return (
+      <div className="mesh min-h-screen p-10">
+        <div className="glass p-16 text-center">
+          <XCircle size={28} className="text-danger mx-auto mb-4" />
+          <p className="font-semibold mb-1.5">
+            {is403 ? 'No tienes acceso a esta cotización' : 'No se pudo cargar la cotización'}
+          </p>
+          <p className="text-sm text-text-secondary mb-6">
+            {is403
+              ? 'Esta propuesta pertenece a otro cliente.'
+              : 'Intenta nuevamente o regresa al dashboard'}
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
+            Volver al dashboard
+          </button>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const isComplete = quotation.estado === 'completado'
-
-  useEffect(() => {
-    if ((quotation as unknown as { narrativa?: string })?.narrativa) {
-      const n = (quotation as unknown as { narrativa: string }).narrativa
-      setNarrativa(n)
-      setNarrativaGuardada(n)
-    } else if (isComplete) {
-      setNarrativaError(true)
-    }
-  }, [quotation?.id, isComplete])  // eslint-disable-line react-hooks/exhaustive-deps
   const sibling    = pair?.sibling ?? null
   const [basic, premium] = quotation.nivel === 'basico' ? [quotation, sibling] : [sibling, quotation]
   const savings = (basic?.costo_total != null && premium?.costo_total != null)
@@ -264,8 +633,12 @@ export default function QuotationResultPage() {
             <RefreshCw size={14} /> Ajustar
           </button>
           {isComplete && (
-            <button className="btn btn-primary btn-sm" onClick={handleDownloadPdf}>
-              <Download size={14} /> Descargar PDF
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => handleDownloadPdf(canSeeProviders ? 'ejecutivo' : 'cliente')}
+              disabled={!!pdfLoading}
+            >
+              {pdfLoading ? <><Loader2 size={13} className="animate-spin" /> Generando...</> : <><Download size={14} /> Descargar PDF</>}
             </button>
           )}
         </div>
@@ -361,6 +734,24 @@ export default function QuotationResultPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Mensaje cliente: servicios detectados de imágenes ── */}
+      {isComplete && !canSeeProviders && (quotation.image_inferred_services ?? []).length > 0 && (
+        <div className="glass mb-6 px-6 py-4 flex items-start gap-3 animate-fade-in"
+          style={{ border: '1px solid rgba(52,199,89,0.24)', background: 'rgba(52,199,89,0.06)' }}>
+          <span className="text-ok text-lg flex-shrink-0">✨</span>
+          <div>
+            <p className="text-sm font-semibold text-ok mb-1">Personalizamos tu propuesta según tus imágenes</p>
+            <p className="text-sm text-text-secondary">
+              Detectamos que podrías necesitar:{' '}
+              <span className="font-medium text-text-primary capitalize">
+                {quotation.image_inferred_services.join(', ')}
+              </span>.
+              {' '}Estos servicios fueron incluidos según disponibilidad y presupuesto.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Propuestas básica / premium ── */}
       {isComplete && (
@@ -486,8 +877,24 @@ export default function QuotationResultPage() {
         </div>
       )}
 
-      {/* ── Narrativa de propuesta (HU-03) ── */}
-      {isComplete && (
+      {/* ── Análisis de estilo visual ── */}
+      {isComplete && quotation.style_analysis && (quotation.style_analysis.confidence ?? 0) > 0.2 && (
+        <StyleAnalysisCard
+          analysis={quotation.style_analysis}
+          images={quotation.imagenes_referencia ?? []}
+        />
+      )}
+
+      {/* ── Servicios detectados visualmente (ejecutivo) ── */}
+      {isComplete && canSeeProviders && (
+        <InferredServicesCard
+          inferred={quotation.image_inferred_services ?? []}
+          styleAnalysis={quotation.style_analysis}
+        />
+      )}
+
+      {/* ── Narrativa de propuesta (HU-03) — solo visible si existe narrativa guardada ── */}
+      {isComplete && (narrativa || editandoNarrativa) && (
         <div className="glass mb-6 p-7">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
@@ -692,12 +1099,46 @@ export default function QuotationResultPage() {
         </div>
       )}
 
+      {/* ── Historial de cambios (solo ejecutivo/admin) ── */}
+      {isComplete && canSeeProviders && changelog && changelog.length > 0 && (
+        <ChangelogPanel entries={changelog} />
+      )}
+
       {/* ── CTA final ── */}
       {isComplete && (
-        <div className="flex justify-center mt-9">
-          <button className="btn btn-primary btn-lg px-10" onClick={handleDownloadPdf}>
-            <Download size={16} /> Descargar propuesta en PDF
-          </button>
+        <div className="flex justify-center gap-3 mt-9">
+          {canSeeProviders ? (
+            <>
+              <button
+                className="btn btn-primary btn-lg px-8"
+                onClick={() => handleDownloadPdf('ejecutivo')}
+                disabled={!!pdfLoading}
+              >
+                {pdfLoading === 'ejecutivo'
+                  ? <><Loader2 size={16} className="animate-spin" /> Generando...</>
+                  : <><Download size={16} /> PDF interno</>}
+              </button>
+              <button
+                className="btn btn-ghost btn-lg px-8"
+                onClick={() => handleDownloadPdf('cliente')}
+                disabled={!!pdfLoading}
+              >
+                {pdfLoading === 'cliente'
+                  ? <><Loader2 size={16} className="animate-spin" /> Generando...</>
+                  : <><Download size={16} /> PDF para cliente</>}
+              </button>
+            </>
+          ) : (
+            <button
+              className="btn btn-primary btn-lg px-10"
+              onClick={() => handleDownloadPdf('cliente')}
+              disabled={!!pdfLoading}
+            >
+              {pdfLoading
+                ? <><Loader2 size={16} className="animate-spin" /> Generando propuesta...</>
+                : <><Download size={16} /> Descargar propuesta en PDF</>}
+            </button>
+          )}
         </div>
       )}
 

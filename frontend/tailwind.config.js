@@ -32,7 +32,7 @@ export default {
       fontFamily: {
         sans:    ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         body:    ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['Syne', 'system-ui', 'sans-serif'],
+        display: ['Cormorant Garamond', 'Georgia', 'serif'],
         mono:    ['JetBrains Mono', 'Menlo', 'Consolas', 'monospace'],
       },
       fontSize: {

@@ -186,6 +186,7 @@ class Quotation(Base, TimestampMixin):
         "QuotationDetail", back_populates="cotizacion", cascade="all, delete-orphan"
     )
     logs: Mapped[list["OptimizationLog"]] = relationship("OptimizationLog", back_populates="cotizacion")
+    change_logs: Mapped[list["QuotationChangeLog"]] = relationship("QuotationChangeLog", back_populates="cotizacion", order_by="QuotationChangeLog.created_at")
 
 
 # ---------------------------------------------------------------------------
@@ -262,3 +263,21 @@ class BasePackage(Base, TimestampMixin):
     min_guests: Mapped[int] = mapped_column(Integer, nullable=False)
     max_guests: Mapped[int] = mapped_column(Integer, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+# ---------------------------------------------------------------------------
+# Historial de cambios de cotización — auditoría de acciones del ejecutivo
+# ---------------------------------------------------------------------------
+class QuotationChangeLog(Base):
+    __tablename__ = "quotation_change_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    cotizacion_id: Mapped[int] = mapped_column(ForeignKey("quotations.id"), nullable=False)
+    usuario_nombre: Mapped[str] = mapped_column(String(150), nullable=False)
+    usuario_rol: Mapped[str] = mapped_column(String(50), nullable=False)
+    accion: Mapped[str] = mapped_column(String(100), nullable=False)
+    valor_anterior: Mapped[str | None] = mapped_column(Text)
+    valor_nuevo: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    cotizacion: Mapped[Quotation] = relationship("Quotation", back_populates="change_logs")
