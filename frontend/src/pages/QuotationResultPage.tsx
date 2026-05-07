@@ -635,205 +635,309 @@ export default function QuotationResultPage() {
           ← Mis propuestas
         </button>
 
-        <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* ── Responsive container: 1-col mobile / 2-col desktop ── */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-4 md:gap-5 items-start" style={{ maxWidth: 1020, margin: '0 auto' }}>
 
-          {/* Hero */}
-          <div className="glass-raised animate-fade-in" style={{ borderRadius: 24, padding: 'clamp(24px,4vw,40px)', overflow: 'hidden', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#E8572A,#FF8C42)' }} />
-            <div className="flex items-start justify-between gap-3 flex-wrap" style={{ marginBottom: 4 }}>
-              <p className="page-eyebrow" style={{ margin: 0 }}>
-                {EVENT_LABELS[quotation.evento_tipo ?? ''] ?? 'Evento'}
-                {quotation.evento_fecha ? ` · ${new Date(quotation.evento_fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}` : ''}
-              </p>
-              {isComplete && <span className="badge badge-success"><CheckCircle size={10} /> Lista</span>}
-            </div>
-            <h1 className="font-display font-bold tracking-tight text-text-primary"
-              style={{ fontSize: 'clamp(36px,7vw,56px)', lineHeight: 1, margin: '4px 0 8px' }}>
-              {EVENT_LABELS[quotation.evento_tipo ?? ''] ?? 'Tu evento'}
-            </h1>
-            {(quotation.num_invitados || quotation.estilo) && (
-              <p className="text-text-secondary" style={{ fontSize: 15, marginBottom: 24 }}>
-                {[quotation.num_invitados && `${quotation.num_invitados} invitados`, quotation.estilo].filter(Boolean).join(' · ')}
-              </p>
-            )}
-            <button className="btn btn-primary btn-lg" style={{ width: '100%' }}
-              onClick={() => handleDownloadPdf('cliente')} disabled={!!pdfLoading || !isComplete}>
-              {pdfLoading === 'cliente'
-                ? <><Loader2 size={16} className="animate-spin" /> Generando propuesta...</>
-                : <><Download size={16} /> Descargar propuesta en PDF</>}
-            </button>
-          </div>
+          {/* ══ LEFT — hero + metrics + style + services ══ */}
+          <div className="flex flex-col gap-3">
 
-          {/* Metric mini-cards */}
-          {isComplete && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8 }}>
-              {[
-                { label: 'Servicios', value: String(services.length + (pkg ? 1 : 0)), sub: 'incluidos' },
-                ...(costPerGuest ? [{ label: 'Por invitado', value: `S/ ${costPerGuest.toLocaleString('es-PE')}`, sub: 'estimado' }] : []),
-                ...(quotation.presupuesto_maximo ? [{ label: 'Tu presupuesto', value: `S/ ${Math.round(quotation.presupuesto_maximo / 1000)}k`, sub: 'indicado' }] : []),
-              ].map(s => (
-                <div key={s.label} className="glass" style={{ borderRadius: 14, padding: 'clamp(10px,2vw,16px) clamp(12px,2vw,18px)' }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: '0 0 5px' }}>{s.label}</p>
-                  <p className="font-mono font-bold text-text-primary" style={{ fontSize: 20, lineHeight: 1, margin: '0 0 3px' }}>{s.value}</p>
-                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>{s.sub}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Style & images */}
-          {isComplete && (hasStyle || refImages.length > 0) && (
-            <div className="glass" style={{ borderRadius: 18, padding: 'clamp(16px,3vw,22px)' }}>
-              <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
-                <Sparkles size={13} className="text-accent" />
-                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: 0 }}>
-                  Análisis de estilo · IA
+            {/* Hero */}
+            <div className="glass-raised animate-fade-in" style={{ borderRadius: 24, padding: 'clamp(24px,4vw,36px)', overflow: 'hidden', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#E8572A,#FF8C42)' }} />
+              <div className="flex items-start justify-between gap-3 flex-wrap" style={{ marginBottom: 4 }}>
+                <p className="page-eyebrow" style={{ margin: 0 }}>
+                  {EVENT_LABELS[quotation.evento_tipo ?? ''] ?? 'Evento'}
+                  {quotation.evento_fecha ? ` · ${new Date(quotation.evento_fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}` : ''}
                 </p>
+                {isComplete && <span className="badge badge-success"><CheckCircle size={10} /> Lista</span>}
               </div>
-              {refImages.length > 0 && (
-                <div className="flex flex-wrap gap-2" style={{ marginBottom: hasStyle ? 12 : 0 }}>
-                  {refImages.map((img, i) => (
-                    <img key={i} src={img.url} alt={img.nombre}
-                      style={{ width: 'clamp(56px,14vw,76px)', height: 'clamp(56px,14vw,76px)', borderRadius: 10, objectFit: 'cover', border: '1px solid rgba(26,23,20,0.08)', flexShrink: 0 }}
-                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  ))}
-                </div>
-              )}
-              {hasStyle && (
-                <div className="flex items-center flex-wrap gap-2">
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{styleInfo!.aesthetic_style}</span>
-                  {styleInfo!.style_keywords.slice(0, 4).map(kw => (
-                    <span key={kw} className="badge badge-neutral" style={{ fontSize: 11, textTransform: 'capitalize' }}>{kw}</span>
-                  ))}
-                </div>
-              )}
-              {(quotation.image_inferred_services ?? []).length > 0 && (
-                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 10, marginBottom: 0 }}>
-                  ✨ Detectamos y agregamos: <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{quotation.image_inferred_services.join(', ')}</span>
+              <h1 className="font-display font-bold tracking-tight text-text-primary"
+                style={{ fontSize: 'clamp(36px,5vw,52px)', lineHeight: 1, margin: '4px 0 8px' }}>
+                {EVENT_LABELS[quotation.evento_tipo ?? ''] ?? 'Tu evento'}
+              </h1>
+              {(quotation.num_invitados || quotation.estilo) && (
+                <p className="text-text-secondary" style={{ fontSize: 15, margin: 0 }}>
+                  {[quotation.num_invitados && `${quotation.num_invitados} invitados`, quotation.estilo].filter(Boolean).join(' · ')}
                 </p>
               )}
+              {/* PDF button — mobile only; desktop has it in right col */}
+              <button className="btn btn-primary btn-lg md:hidden" style={{ width: '100%', marginTop: 24 }}
+                onClick={() => handleDownloadPdf('cliente')} disabled={!!pdfLoading || !isComplete}>
+                {pdfLoading === 'cliente'
+                  ? <><Loader2 size={16} className="animate-spin" /> Generando propuesta...</>
+                  : <><Download size={16} /> Descargar propuesta en PDF</>}
+              </button>
             </div>
-          )}
 
-          {/* Nivel toggle */}
-          {isComplete && hasBoth && (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
-              {(['basico', 'premium'] as const).map(nivel => {
-                const q = nivel === 'basico' ? basic : premium
-                if (!q || q.estado !== 'completado') return null
-                const isActive = activeNivel === nivel
-                return (
-                  <button key={nivel} onClick={() => setClientNivel(nivel)} className="glass text-left"
-                    style={{ flex: '1 1 140px', borderRadius: 16, padding: 'clamp(14px,2vw,20px) clamp(16px,2vw,22px)',
-                      border: `2px solid ${isActive ? 'rgba(232,87,42,0.45)' : 'transparent'}`,
-                      background: isActive ? 'rgba(232,87,42,0.05)' : undefined, transition: 'all 0.15s' }}>
-                    <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: 0, color: isActive ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
-                        {nivel === 'premium' ? '★ Premium' : 'Básica'}
-                      </p>
-                      {isActive && <CheckCircle size={13} className="text-accent flex-shrink-0" />}
-                    </div>
-                    <p className="font-mono font-bold text-text-primary" style={{ fontSize: 'clamp(18px,4vw,24px)', lineHeight: 1, margin: '0 0 6px' }}>
-                      S/ {q.costo_total?.toLocaleString('es-PE', { minimumFractionDigits: 0 })}
-                    </p>
-                    {savingsDiff != null && (
-                      <p style={{ fontSize: 11, margin: 0, lineHeight: 1.3, color: nivel === 'basico' ? '#1f7a3a' : 'var(--color-text-muted)' }}>
-                        {nivel === 'basico' ? `Ahorras S/ ${savingsDiff.toLocaleString('es-PE', { minimumFractionDigits: 0 })}` : `+S/ ${savingsDiff.toLocaleString('es-PE', { minimumFractionDigits: 0 })} vs Básica`}
-                      </p>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Error */}
-          {quotation.estado === 'error' && (
-            <div className="glass" style={{ borderRadius: 16, padding: '20px 24px', border: '1px solid rgba(255,59,48,0.2)', background: 'rgba(255,59,48,0.04)' }}>
-              <p className="font-semibold" style={{ marginBottom: 6 }}>Presupuesto insuficiente</p>
-              <p className="text-text-secondary" style={{ fontSize: 14, margin: 0 }}>No fue posible cubrir todos los servicios. Contacta al equipo de INARI.</p>
-            </div>
-          )}
-
-          {/* Services */}
-          {isComplete && services.length > 0 && (
-            <div className="glass" style={{ borderRadius: 20, padding: 'clamp(16px,4vw,26px)' }}>
-              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
-                Desglose de servicios
-              </p>
-
-              {obligatorios.length > 0 && (
-                <>
-                  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: '0 0 6px' }}>Principales</p>
-                  {obligatorios.map((d, i) => (
-                    <div key={d.id} className="flex items-center gap-3"
-                      style={{ padding: '10px 0', borderBottom: i < obligatorios.length - 1 ? '1px solid var(--color-border)' : undefined }}>
-                      <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: 'rgba(232,87,42,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <CheckCircle size={11} className="text-accent" />
-                      </div>
-                      <span style={{ fontSize: 14, fontWeight: 500, textTransform: 'capitalize', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, color: 'var(--color-text-primary)' }}>{d.servicio}</span>
-                      <span className="font-mono" style={{ fontSize: 13, fontWeight: 600, flexShrink: 0, color: 'var(--color-text-secondary)' }}>S/ {d.costo.toLocaleString('es-PE', { minimumFractionDigits: 0 })}</span>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {adicionales.length > 0 && (
-                <div style={{ marginTop: obligatorios.length > 0 ? 14 : 0 }}>
-                  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: '0 0 6px' }}>Adicionales</p>
-                  {adicionales.map((d, i) => (
-                    <div key={d.id} className="flex items-center gap-3"
-                      style={{ padding: '10px 0', borderBottom: i < adicionales.length - 1 ? '1px solid var(--color-border)' : undefined }}>
-                      <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: 'rgba(26,23,20,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <CheckCircle size={11} className="text-text-muted" />
-                      </div>
-                      <span style={{ fontSize: 14, fontWeight: 400, textTransform: 'capitalize', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, color: 'var(--color-text-secondary)' }}>{d.servicio}</span>
-                      <span className="font-mono" style={{ fontSize: 13, flexShrink: 0, color: 'var(--color-text-muted)' }}>S/ {d.costo.toLocaleString('es-PE', { minimumFractionDigits: 0 })}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {pkg && (
-                <div className="flex items-center gap-3" style={{ padding: '10px 0', borderTop: '1px solid var(--color-border)', marginTop: 4 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: 'rgba(232,87,42,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CheckCircle size={11} className="text-accent" />
+            {/* Metric mini-cards */}
+            {isComplete && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8 }}>
+                {[
+                  { label: 'Servicios', value: String(services.length + (pkg ? 1 : 0)), sub: 'incluidos' },
+                  ...(costPerGuest ? [{ label: 'Por invitado', value: `S/ ${costPerGuest.toLocaleString('es-PE')}`, sub: 'estimado' }] : []),
+                  ...(quotation.presupuesto_maximo ? [{ label: 'Tu presupuesto', value: `S/ ${Math.round(quotation.presupuesto_maximo / 1000)}k`, sub: 'indicado' }] : []),
+                ].map(s => (
+                  <div key={s.label} className="glass" style={{ borderRadius: 14, padding: 'clamp(10px,2vw,16px) clamp(12px,2vw,18px)' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: '0 0 5px' }}>{s.label}</p>
+                    <p className="font-mono font-bold text-text-primary" style={{ fontSize: 20, lineHeight: 1, margin: '0 0 3px' }}>{s.value}</p>
+                    <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>{s.sub}</p>
                   </div>
-                  <span style={{ fontSize: 14, fontWeight: 500, flex: 1, color: 'var(--color-text-primary)' }}>Infraestructura INARI GROUP</span>
-                  <span className="badge badge-accent" style={{ fontSize: 10 }}>Incluido</span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between" style={{ borderTop: '2px solid var(--color-text-primary)', marginTop: 18, paddingTop: 18 }}>
-                <div>
-                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 2px', textTransform: 'uppercase' as const, letterSpacing: '0.08em', fontWeight: 600 }}>
-                    Total {activeNivel === 'premium' ? 'Premium' : 'Básica'}
-                  </p>
-                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>IGV incluido</p>
-                </div>
-                <span className="font-mono font-bold text-text-primary" style={{ fontSize: 30, lineHeight: 1 }}>
-                  S/ {displayedQ.costo_total?.toLocaleString('es-PE', { minimumFractionDigits: 0 })}
-                </span>
+                ))}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Narrative */}
-          {isComplete && qNarrativa && (
-            <div className="glass" style={{ borderRadius: 18, padding: 'clamp(16px,4vw,24px)' }}>
-              <div className="flex items-center gap-2" style={{ marginBottom: 14 }}>
-                <Sparkles size={13} className="text-accent" />
-                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: 0 }}>
-                  Descripción de tu propuesta
+            {/* Style & images — mobile only; desktop shows in right col */}
+            {isComplete && (hasStyle || refImages.length > 0) && (
+              <div className="glass md:hidden" style={{ borderRadius: 18, padding: 'clamp(16px,3vw,22px)' }}>
+                <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
+                  <Sparkles size={13} className="text-accent" />
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: 0 }}>
+                    Análisis de estilo · IA
+                  </p>
+                </div>
+                {refImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2" style={{ marginBottom: hasStyle ? 12 : 0 }}>
+                    {refImages.map((img, i) => (
+                      <img key={i} src={img.url} alt={img.nombre}
+                        style={{ width: 'clamp(56px,10vw,76px)', height: 'clamp(56px,10vw,76px)', borderRadius: 10, objectFit: 'cover', border: '1px solid rgba(26,23,20,0.08)', flexShrink: 0 }}
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    ))}
+                  </div>
+                )}
+                {hasStyle && (
+                  <div className="flex items-center flex-wrap gap-2">
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{styleInfo!.aesthetic_style}</span>
+                    {styleInfo!.style_keywords.slice(0, 4).map(kw => (
+                      <span key={kw} className="badge badge-neutral" style={{ fontSize: 11, textTransform: 'capitalize' }}>{kw}</span>
+                    ))}
+                  </div>
+                )}
+                {(quotation.image_inferred_services ?? []).length > 0 && (
+                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 10, marginBottom: 0 }}>
+                    ✨ Detectamos y agregamos: <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{quotation.image_inferred_services.join(', ')}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Nivel toggle — mobile only; desktop has it in right col */}
+            {isComplete && hasBoth && (
+              <div className="flex md:hidden" style={{ gap: 10, flexWrap: 'wrap' as const }}>
+                {(['basico', 'premium'] as const).map(nivel => {
+                  const q = nivel === 'basico' ? basic : premium
+                  if (!q || q.estado !== 'completado') return null
+                  const isActive = activeNivel === nivel
+                  return (
+                    <button key={nivel} onClick={() => setClientNivel(nivel)} className="glass text-left"
+                      style={{ flex: '1 1 140px', borderRadius: 16, padding: '16px 20px',
+                        border: `2px solid ${isActive ? 'rgba(232,87,42,0.45)' : 'transparent'}`,
+                        background: isActive ? 'rgba(232,87,42,0.05)' : undefined, transition: 'all 0.15s' }}>
+                      <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: 0, color: isActive ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
+                          {nivel === 'premium' ? '★ Premium' : 'Básica'}
+                        </p>
+                        {isActive && <CheckCircle size={13} className="text-accent flex-shrink-0" />}
+                      </div>
+                      <p className="font-mono font-bold text-text-primary" style={{ fontSize: 22, lineHeight: 1, margin: '0 0 5px' }}>
+                        S/ {q.costo_total?.toLocaleString('es-PE', { minimumFractionDigits: 0 })}
+                      </p>
+                      {savingsDiff != null && (
+                        <p style={{ fontSize: 11, margin: 0, lineHeight: 1.3, color: nivel === 'basico' ? '#1f7a3a' : 'var(--color-text-muted)' }}>
+                          {nivel === 'basico' ? `Ahorras S/ ${savingsDiff.toLocaleString('es-PE', { minimumFractionDigits: 0 })}` : `+S/ ${savingsDiff.toLocaleString('es-PE', { minimumFractionDigits: 0 })} vs Básica`}
+                        </p>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Error */}
+            {quotation.estado === 'error' && (
+              <div className="glass" style={{ borderRadius: 16, padding: '20px 24px', border: '1px solid rgba(255,59,48,0.2)', background: 'rgba(255,59,48,0.04)' }}>
+                <p className="font-semibold" style={{ marginBottom: 6 }}>Presupuesto insuficiente</p>
+                <p className="text-text-secondary" style={{ fontSize: 14, margin: 0 }}>No fue posible cubrir todos los servicios. Contacta al equipo de INARI.</p>
+              </div>
+            )}
+
+            {/* Services */}
+            {isComplete && services.length > 0 && (
+              <div className="glass" style={{ borderRadius: 20, padding: 'clamp(16px,4vw,26px)' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
+                  Desglose de servicios
+                </p>
+                {obligatorios.length > 0 && (
+                  <>
+                    <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: '0 0 6px' }}>Principales</p>
+                    {obligatorios.map((d, i) => (
+                      <div key={d.id} className="flex items-center gap-3"
+                        style={{ padding: '10px 0', borderBottom: i < obligatorios.length - 1 ? '1px solid var(--color-border)' : undefined }}>
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: 'rgba(232,87,42,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <CheckCircle size={11} className="text-accent" />
+                        </div>
+                        <span style={{ fontSize: 14, fontWeight: 500, textTransform: 'capitalize', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, color: 'var(--color-text-primary)' }}>{d.servicio}</span>
+                        <span className="font-mono" style={{ fontSize: 13, fontWeight: 600, flexShrink: 0, color: 'var(--color-text-secondary)' }}>S/ {d.costo.toLocaleString('es-PE', { minimumFractionDigits: 0 })}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {adicionales.length > 0 && (
+                  <div style={{ marginTop: obligatorios.length > 0 ? 14 : 0 }}>
+                    <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: '0 0 6px' }}>Adicionales</p>
+                    {adicionales.map((d, i) => (
+                      <div key={d.id} className="flex items-center gap-3"
+                        style={{ padding: '10px 0', borderBottom: i < adicionales.length - 1 ? '1px solid var(--color-border)' : undefined }}>
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: 'rgba(26,23,20,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <CheckCircle size={11} className="text-text-muted" />
+                        </div>
+                        <span style={{ fontSize: 14, fontWeight: 400, textTransform: 'capitalize', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, color: 'var(--color-text-secondary)' }}>{d.servicio}</span>
+                        <span className="font-mono" style={{ fontSize: 13, flexShrink: 0, color: 'var(--color-text-muted)' }}>S/ {d.costo.toLocaleString('es-PE', { minimumFractionDigits: 0 })}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {pkg && (
+                  <div className="flex items-center gap-3" style={{ padding: '10px 0', borderTop: '1px solid var(--color-border)', marginTop: 4 }}>
+                    <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: 'rgba(232,87,42,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <CheckCircle size={11} className="text-accent" />
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: 500, flex: 1, color: 'var(--color-text-primary)' }}>Infraestructura INARI GROUP</span>
+                    <span className="badge badge-accent" style={{ fontSize: 10 }}>Incluido</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between" style={{ borderTop: '2px solid var(--color-text-primary)', marginTop: 18, paddingTop: 18 }}>
+                  <div>
+                    <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 2px', textTransform: 'uppercase' as const, letterSpacing: '0.08em', fontWeight: 600 }}>
+                      Total {activeNivel === 'premium' ? 'Premium' : 'Básica'}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>IGV incluido</p>
+                  </div>
+                  <span className="font-mono font-bold text-text-primary" style={{ fontSize: 30, lineHeight: 1 }}>
+                    S/ {displayedQ.costo_total?.toLocaleString('es-PE', { minimumFractionDigits: 0 })}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Narrative — mobile only */}
+            {isComplete && qNarrativa && (
+              <div className="glass md:hidden" style={{ borderRadius: 18, padding: 'clamp(16px,4vw,24px)' }}>
+                <div className="flex items-center gap-2" style={{ marginBottom: 14 }}>
+                  <Sparkles size={13} className="text-accent" />
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: 0 }}>
+                    Descripción de tu propuesta
+                  </p>
+                </div>
+                <p className="text-text-secondary" style={{ fontSize: 14, lineHeight: 1.75, margin: 0, borderLeft: '3px solid rgba(232,87,42,0.35)', paddingLeft: 14, fontStyle: 'italic' }}>
+                  {qNarrativa}
                 </p>
               </div>
-              <p className="text-text-secondary" style={{ fontSize: 14, lineHeight: 1.75, margin: 0, borderLeft: '3px solid rgba(232,87,42,0.35)', paddingLeft: 14, fontStyle: 'italic' }}>
-                {qNarrativa}
-              </p>
-            </div>
-          )}
+            )}
 
-        </div>
+          </div>{/* end left col */}
+
+          {/* ══ RIGHT — sticky: style + nivel toggle + narrative + PDF ══ */}
+          <div className="hidden md:flex flex-col gap-3 sticky top-6">
+
+            {/* Style & images — desktop */}
+            {isComplete && (hasStyle || refImages.length > 0) && (
+              <div className="glass" style={{ borderRadius: 18, padding: '20px 22px' }}>
+                <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
+                  <Sparkles size={13} className="text-accent" />
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: 0 }}>
+                    Análisis de estilo · IA
+                  </p>
+                </div>
+                {refImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2" style={{ marginBottom: hasStyle ? 12 : 0 }}>
+                    {refImages.map((img, i) => (
+                      <img key={i} src={img.url} alt={img.nombre}
+                        style={{ width: 56, height: 56, borderRadius: 9, objectFit: 'cover', border: '1px solid rgba(26,23,20,0.08)', flexShrink: 0 }}
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    ))}
+                  </div>
+                )}
+                {hasStyle && (
+                  <div className="flex items-center flex-wrap gap-1.5">
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{styleInfo!.aesthetic_style}</span>
+                    {styleInfo!.style_keywords.slice(0, 4).map(kw => (
+                      <span key={kw} className="badge badge-neutral" style={{ fontSize: 10, textTransform: 'capitalize' }}>{kw}</span>
+                    ))}
+                  </div>
+                )}
+                {(quotation.image_inferred_services ?? []).length > 0 && (
+                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 8, marginBottom: 0, lineHeight: 1.5 }}>
+                    ✨ <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{quotation.image_inferred_services.join(', ')}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Nivel toggle — desktop */}
+            {isComplete && hasBoth && (
+              <div className="glass" style={{ borderRadius: 18, padding: 20 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+                  Elige tu propuesta
+                </p>
+                <div className="flex flex-col gap-2">
+                  {(['premium', 'basico'] as const).map(nivel => {
+                    const q = nivel === 'basico' ? basic : premium
+                    if (!q || q.estado !== 'completado') return null
+                    const isActive = activeNivel === nivel
+                    return (
+                      <button key={nivel} onClick={() => setClientNivel(nivel)} className="glass text-left w-full"
+                        style={{ borderRadius: 14, padding: '14px 18px',
+                          border: `2px solid ${isActive ? 'rgba(232,87,42,0.45)' : 'transparent'}`,
+                          background: isActive ? 'rgba(232,87,42,0.05)' : undefined, transition: 'all 0.15s' }}>
+                        <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: 0, color: isActive ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
+                            {nivel === 'premium' ? '★ Premium' : 'Básica'}
+                          </p>
+                          {isActive && <CheckCircle size={12} className="text-accent" />}
+                        </div>
+                        <p className="font-mono font-bold text-text-primary" style={{ fontSize: 22, lineHeight: 1, margin: '0 0 5px' }}>
+                          S/ {q.costo_total?.toLocaleString('es-PE', { minimumFractionDigits: 0 })}
+                        </p>
+                        {savingsDiff != null && (
+                          <p style={{ fontSize: 11, margin: 0, color: nivel === 'basico' ? '#1f7a3a' : 'var(--color-text-muted)' }}>
+                            {nivel === 'basico' ? `Ahorras S/ ${savingsDiff.toLocaleString('es-PE', { minimumFractionDigits: 0 })}` : `+S/ ${savingsDiff.toLocaleString('es-PE', { minimumFractionDigits: 0 })} vs Básica`}
+                          </p>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Narrative — desktop */}
+            {isComplete && qNarrativa && (
+              <div className="glass" style={{ borderRadius: 18, padding: '20px 22px' }}>
+                <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
+                  <Sparkles size={13} className="text-accent" />
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: 0 }}>
+                    Tu propuesta
+                  </p>
+                </div>
+                <p className="text-text-secondary" style={{ fontSize: 13, lineHeight: 1.7, margin: 0, borderLeft: '2px solid rgba(232,87,42,0.3)', paddingLeft: 12, fontStyle: 'italic' }}>
+                  {qNarrativa}
+                </p>
+              </div>
+            )}
+
+            {/* PDF button — desktop */}
+            {isComplete && (
+              <button className="btn btn-primary btn-lg" style={{ width: '100%' }}
+                onClick={() => handleDownloadPdf('cliente')} disabled={!!pdfLoading}>
+                {pdfLoading === 'cliente'
+                  ? <><Loader2 size={16} className="animate-spin" /> Generando...</>
+                  : <><Download size={16} /> Descargar PDF</>}
+              </button>
+            )}
+
+          </div>{/* end right col */}
+
+        </div>{/* end grid */}
 
         <ConfirmModal
           open={pendingReprocessData !== null}
