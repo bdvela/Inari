@@ -42,4 +42,4 @@ async def get_db() -> AsyncSession:
 async def create_tables() -> None:
     """Crear todas las tablas. Usar solo en desarrollo o migrations."""
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(lambda c: Base.metadata.create_all(c, checkfirst=True))

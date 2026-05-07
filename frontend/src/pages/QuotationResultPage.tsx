@@ -12,11 +12,11 @@ import {
   Download, CheckCircle, XCircle, Loader2, RefreshCw,
   ChevronDown, ChevronUp, AlertCircle, TrendingDown,
   Minus, History, ChevronRight, ArrowRight, Sparkles,
-  Star, LockKeyhole, Package, TriangleAlert,
+  Star, LockKeyhole, Package, TriangleAlert, MessageSquare, Send,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { quotationsApi } from '../services/api'
-import type { GenerateQuotationResult, AlternativeProvider, ChangeLogEntry } from '../types'
+import type { GenerateQuotationResult, AlternativeProvider, ChangeLogEntry, QuotationRequest } from '../types'
 import ConfirmModal from '../components/shared/ConfirmModal'
 import QualityBar from '../components/shared/QualityBar'
 import { useAuth } from '../context/AuthContext'
@@ -435,6 +435,185 @@ function ChangelogPanel({ entries }: { entries: ChangeLogEntry[] }) {
   )
 }
 
+// ── Client: solicitar ajuste ──────────────────────────────────
+function ClientRequestWidget({ quotationId }: { quotationId: number }) {
+  const qc = useQueryClient()
+  const [open, setOpen]     = useState(false)
+  const [mensaje, setMensaje] = useState('')
+
+  const { data: requests } = useQuery({
+    queryKey: ['requests', quotationId],
+    queryFn:  () => quotationsApi.getRequests(quotationId),
+  })
+
+  const mutation = useMutation({
+    mutationFn: () => quotationsApi.createRequest(quotationId, mensaje),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requests', quotationId] })
+      setMensaje('')
+      setOpen(false)
+      toast.success('Solicitud enviada. INARI te contactará pronto.')
+    },
+    onError: () => toast.error('No se pudo enviar la solicitud.'),
+  })
+
+  const last = requests?.[0]
+
+  const estadoLabel: Record<QuotationRequest['estado'], string> = {
+    pendiente:   'En espera de revisión',
+    en_revision: 'En revisión por INARI',
+    resuelto:    'Resuelta',
+  }
+  const estadoColor: Record<QuotationRequest['estado'], string> = {
+    pendiente:   '#b45309',
+    en_revision: '#1d4ed8',
+    resuelto:    '#15803d',
+  }
+
+  if (last && last.estado !== 'resuelto') {
+    return (
+      <div className="glass" style={{ borderRadius: 18, padding: '18px 22px', border: '1px solid rgba(232,87,42,0.15)' }}>
+        <div className="flex items-center gap-2 mb-2">
+          <MessageSquare size={14} className="text-accent" />
+          <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: 'var(--color-text-muted)', margin: 0 }}>
+            Tu solicitud de ajuste
+          </p>
+        </div>
+        <p className="text-text-secondary" style={{ fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>"{last.mensaje}"</p>
+        <div className="flex items-center gap-2">
+          <span style={{ fontSize: 11, fontWeight: 600, color: estadoColor[last.estado] }}>
+            ● {estadoLabel[last.estado]}
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+            · {new Date(last.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="glass" style={{ borderRadius: 18, padding: '18px 22px' }}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <MessageSquare size={14} className="text-accent" />
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>
+            ¿Quieres ajustar algo?
+          </p>
+        </div>
+        {!open && (
+          <button className="btn btn-secondary btn-sm" onClick={() => setOpen(true)}>
+            Solicitar ajuste
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="animate-fade-in" style={{ marginTop: 14 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+            Describe qué quisieras cambiar — INARI te contactará para coordinarlo.
+          </p>
+          <textarea
+            className="input w-full resize-none"
+            rows={3}
+            placeholder="Ej: Quisiera agregar fotografía adicional y quitar la decoración exterior..."
+            value={mensaje}
+            onChange={e => setMensaje(e.target.value)}
+            style={{ fontSize: 13 }}
+          />
+          <div className="flex items-center justify-end gap-2 mt-3">
+            <button className="btn btn-ghost btn-sm" onClick={() => { setOpen(false); setMensaje('') }}>Cancelar</button>
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={!mensaje.trim() || mutation.isPending}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending ? <><Loader2 size={13} className="animate-spin" /> Enviando...</> : <><Send size={13} /> Enviar solicitud</>}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Staff: panel de solicitudes del cliente ───────────────────
+function StaffRequestPanel({ quotationId }: { quotationId: number }) {
+  const qc = useQueryClient()
+
+  const { data: requests } = useQuery({
+    queryKey: ['requests', quotationId],
+    queryFn:  () => quotationsApi.getRequests(quotationId),
+  })
+
+  const mutation = useMutation({
+    mutationFn: ({ id, estado }: { id: number; estado: 'en_revision' | 'resuelto' }) =>
+      quotationsApi.updateRequest(id, estado),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['requests', quotationId] }),
+    onError: () => toast.error('Error al actualizar solicitud'),
+  })
+
+  if (!requests?.length) return null
+
+  const badgeStyle: Record<string, { bg: string; color: string }> = {
+    pendiente:   { bg: 'rgba(245,158,11,0.12)', color: '#b45309' },
+    en_revision: { bg: 'rgba(59,130,246,0.12)', color: '#1d4ed8' },
+    resuelto:    { bg: 'rgba(22,163,74,0.10)',  color: '#15803d' },
+  }
+  const estadoLabel: Record<string, string> = {
+    pendiente: 'Pendiente', en_revision: 'En revisión', resuelto: 'Resuelta',
+  }
+
+  return (
+    <div className="glass mb-6 p-7" style={{ borderRadius: 16 }}>
+      <div className="flex items-center gap-2.5 mb-5">
+        <MessageSquare size={15} className="text-accent" />
+        <h3 className="font-display text-lg font-bold tracking-tight flex-1">Solicitudes del cliente</h3>
+        <span className="text-xs text-text-muted">{requests.length} solicitud{requests.length !== 1 ? 'es' : ''}</span>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {requests.map(r => {
+          const bs = badgeStyle[r.estado] ?? badgeStyle.pendiente
+          return (
+            <div key={r.id} className="glass" style={{ borderRadius: 12, padding: '14px 18px' }}>
+              <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: bs.bg, color: bs.color }}>
+                  {estadoLabel[r.estado]}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                  {new Date(r.created_at).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              <p className="text-text-secondary" style={{ fontSize: 13, lineHeight: 1.6, margin: '0 0 12px' }}>"{r.mensaje}"</p>
+              {r.estado !== 'resuelto' && (
+                <div className="flex gap-2">
+                  {r.estado === 'pendiente' && (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      disabled={mutation.isPending}
+                      onClick={() => mutation.mutate({ id: r.id, estado: 'en_revision' })}
+                    >
+                      Marcar en revisión
+                    </button>
+                  )}
+                  <button
+                    className="btn btn-primary btn-sm"
+                    disabled={mutation.isPending}
+                    onClick={() => mutation.mutate({ id: r.id, estado: 'resuelto' })}
+                  >
+                    {mutation.isPending ? <Loader2 size={12} className="animate-spin" /> : '✓ Marcar resuelta'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function QuotationResultPage() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
@@ -454,8 +633,9 @@ export default function QuotationResultPage() {
   const [openAlternativesId, setOpenAlternativesId] = useState<number | null>(null)
   const [showHistory, setShowHistory]             = useState(false)
   const [pendingReprocessData, setPendingReprocessData] = useState<ReprocessForm | null>(null)
-  const [pdfLoading, setPdfLoading]   = useState<'ejecutivo' | 'cliente' | null>(null)
-  const [clientNivel, setClientNivel] = useState<'basico' | 'premium' | null>(null)
+  const [pdfLoading, setPdfLoading]       = useState<'ejecutivo' | 'cliente' | null>(null)
+  const [clientNivel, setClientNivel]     = useState<'basico' | 'premium' | null>(null)
+  const [clientLightbox, setClientLightbox] = useState<number | null>(null)
 
   const { data: quotation, isLoading, error } = useQuery({
     queryKey: ['quotation', id],
@@ -629,6 +809,9 @@ export default function QuotationResultPage() {
 
     return (
       <div className="mesh min-h-screen" style={{ padding: 'clamp(16px,4vw,48px) clamp(12px,4vw,40px) 64px' }}>
+        {clientLightbox !== null && refImages.length > 0 && (
+          <ImageLightbox images={refImages} initialIndex={clientLightbox} onClose={() => setClientLightbox(null)} />
+        )}
         <div className="mesh-blob" />
 
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard')} style={{ marginBottom: 24 }}>
@@ -698,9 +881,14 @@ export default function QuotationResultPage() {
                 {refImages.length > 0 && (
                   <div className="flex flex-wrap gap-2" style={{ marginBottom: hasStyle ? 12 : 0 }}>
                     {refImages.map((img, i) => (
-                      <img key={i} src={img.url} alt={img.nombre}
-                        style={{ width: 'clamp(56px,10vw,76px)', height: 'clamp(56px,10vw,76px)', borderRadius: 10, objectFit: 'cover', border: '1px solid rgba(26,23,20,0.08)', flexShrink: 0 }}
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                      <button key={i} onClick={() => setClientLightbox(i)} className="relative group focus:outline-none" style={{ flexShrink: 0 }}>
+                        <img src={img.url} alt={img.nombre}
+                          style={{ width: 'clamp(56px,10vw,76px)', height: 'clamp(56px,10vw,76px)', borderRadius: 10, objectFit: 'cover', border: '1px solid rgba(26,23,20,0.08)', display: 'block', cursor: 'zoom-in' }}
+                          onError={e => { (e.target as HTMLImageElement).closest('button')!.style.display = 'none' }} />
+                        <div className="absolute inset-0 rounded-[10px] bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 text-white text-xs transition-opacity">⊕</span>
+                        </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -819,6 +1007,9 @@ export default function QuotationResultPage() {
               </div>
             )}
 
+            {/* Solicitar ajuste */}
+            {isComplete && <ClientRequestWidget quotationId={Number(id)} />}
+
             {/* Narrative — mobile only */}
             {isComplete && qNarrativa && (
               <div className="glass md:hidden" style={{ borderRadius: 18, padding: 'clamp(16px,4vw,24px)' }}>
@@ -851,9 +1042,14 @@ export default function QuotationResultPage() {
                 {refImages.length > 0 && (
                   <div className="flex flex-wrap gap-2" style={{ marginBottom: hasStyle ? 12 : 0 }}>
                     {refImages.map((img, i) => (
-                      <img key={i} src={img.url} alt={img.nombre}
-                        style={{ width: 56, height: 56, borderRadius: 9, objectFit: 'cover', border: '1px solid rgba(26,23,20,0.08)', flexShrink: 0 }}
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                      <button key={i} onClick={() => setClientLightbox(i)} className="relative group focus:outline-none" style={{ flexShrink: 0 }}>
+                        <img src={img.url} alt={img.nombre}
+                          style={{ width: 56, height: 56, borderRadius: 9, objectFit: 'cover', border: '1px solid rgba(26,23,20,0.08)', display: 'block', cursor: 'zoom-in' }}
+                          onError={e => { (e.target as HTMLImageElement).closest('button')!.style.display = 'none' }} />
+                        <div className="absolute inset-0 rounded-[9px] bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 text-white text-xs transition-opacity">⊕</span>
+                        </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -1443,6 +1639,8 @@ export default function QuotationResultPage() {
       )}
 
       {/* ── Historial de cambios (solo ejecutivo/admin) ── */}
+      {isComplete && canSeeProviders && <StaffRequestPanel quotationId={Number(id)} />}
+
       {isComplete && canSeeProviders && changelog && changelog.length > 0 && (
         <ChangelogPanel entries={changelog} />
       )}

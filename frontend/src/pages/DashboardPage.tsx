@@ -93,6 +93,12 @@ function QuotationCard({ q, isStaff, onClick }: { q: QuotationSummary; isStaff: 
         <StatusBadge estado={q.estado} />
         <LevelBadge nivel={q.nivel} />
         <span className="text-xs text-text-muted">{EVENT_LABELS[q.evento_tipo] ?? q.evento_tipo}</span>
+        {isStaff && q.pending_requests > 0 && (
+          <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(232,87,42,0.12)', color: '#E8572A' }}>
+            ● {q.pending_requests} solicitud{q.pending_requests !== 1 ? 'es' : ''}
+          </span>
+        )}
       </div>
       {q.costo_total != null && (
         <p className="font-mono text-sm font-semibold text-text-primary mt-2">
@@ -622,7 +628,15 @@ export default function DashboardPage() {
                 <span className="text-[13px] text-text-secondary truncate">{q.cliente_nombre ?? '—'}</span>
                 <span className="text-[13px] text-text-secondary">{EVENT_LABELS[q.evento_tipo] ?? q.evento_tipo}</span>
                 <div><LevelBadge nivel={q.nivel} /></div>
-                <div><StatusBadge estado={q.estado} /></div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <StatusBadge estado={q.estado} />
+                  {q.pending_requests > 0 && (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(232,87,42,0.12)', color: '#E8572A', whiteSpace: 'nowrap' }}>
+                      ● {q.pending_requests}
+                    </span>
+                  )}
+                </div>
                 <div className="text-right font-mono text-sm font-semibold text-text-primary">
                   {q.costo_total != null
                     ? `S/ ${q.costo_total.toLocaleString('es-PE', { minimumFractionDigits: 0 })}`

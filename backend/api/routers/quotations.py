@@ -27,6 +27,7 @@ from backend.models.models import (
     QuotationChangeLog,
     QuotationDetail,
     QuotationLevel,
+    QuotationRequest,
     QuotationStatus,
     ReferenceImage,
     User,
@@ -632,7 +633,11 @@ async def list_my_quotations(
     """Lista cotizaciones del usuario actual. Ejecutivos/admin ven todas."""
     base_query = (
         select(Quotation)
-        .options(selectinload(Quotation.evento), selectinload(Quotation.cliente))
+        .options(
+            selectinload(Quotation.evento),
+            selectinload(Quotation.cliente),
+            selectinload(Quotation.requests),
+        )
         .order_by(Quotation.created_at.desc())
         .limit(100)
     )
@@ -663,6 +668,7 @@ async def list_my_quotations(
                 else (q.cliente.nombre if q.cliente else None)
             ),
             "evento_fecha": q.evento.fecha.isoformat() if q.evento else None,
+            "pending_requests": sum(1 for r in q.requests if r.estado == "pendiente"),
         }
         for q in quotations
     ]
@@ -1312,3 +1318,86 @@ async def download_pdf(
             media_type="text/html; charset=utf-8",
             headers={"Content-Disposition": f'inline; filename="{filename}"'},
         )
+
+
+# ---------------------------------------------------------------------------
+# Solicitudes de ajuste del cliente
+# ---------------------------------------------------------------------------
+
+class CreateRequestBody(BaseModel):
+    mensaje: str
+
+
+@router.post("/{quotation_id}/requests", status_code=status.HTTP_201_CREATED)
+async def create_request(
+    quotation_id: int,
+    body: CreateRequestBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cliente envía solicitud de ajuste sobre su cotización."""
+    result = await db.execute(select(Quotation).where(Quotation.id == quotation_id))
+    q = result.scalar_one_or_none()
+    if not q:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    if current_user.role == UserRole.CLIENTE and q.cliente_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Sin acceso")
+    if not body.mensaje.strip():
+        raise HTTPException(status_code=400, detail="El mensaje no puede estar vacío")
+
+    req = QuotationRequest(
+        quotation_id=quotation_id,
+        cliente_id=current_user.id,
+        mensaje=body.mensaje.strip(),
+        estado="pendiente",
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(req)
+    await db.flush()
+    return {"id": req.id, "estado": req.estado.value, "created_at": req.created_at}
+
+
+@router.get("/{quotation_id}/requests")
+async def get_requests(
+    quotation_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lista solicitudes de una cotización. Cliente ve las suyas; ejecutivo ve todas."""
+    query = select(QuotationRequest).where(QuotationRequest.quotation_id == quotation_id)
+    if current_user.role == UserRole.CLIENTE:
+        query = query.where(QuotationRequest.cliente_id == current_user.id)
+    query = query.order_by(QuotationRequest.created_at.desc())
+    result = await db.execute(query)
+    reqs = result.scalars().all()
+    return [
+        {
+            "id": r.id,
+            "mensaje": r.mensaje,
+            "estado": r.estado.value,
+            "created_at": r.created_at,
+        }
+        for r in reqs
+    ]
+
+
+@router.patch("/requests/{request_id}")
+async def update_request(
+    request_id: int,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.EJECUTIVO, UserRole.ADMIN)),
+):
+    """Ejecutivo actualiza estado de solicitud (en_revision | resuelto)."""
+    result = await db.execute(select(QuotationRequest).where(QuotationRequest.id == request_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+
+    new_estado = body.get("estado")
+    if new_estado not in ("en_revision", "resuelto"):
+        raise HTTPException(status_code=400, detail="Estado inválido")
+
+    req.estado = new_estado
+    await db.flush()
+    return {"id": req.id, "estado": req.estado}

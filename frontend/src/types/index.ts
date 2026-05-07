@@ -136,6 +136,16 @@ export interface QuotationSummary {
   evento_nombre: string
   evento_fecha: string | null
   cliente_nombre: string | null
+  pending_requests: number
+}
+
+export type RequestEstado = 'pendiente' | 'en_revision' | 'resuelto'
+
+export interface QuotationRequest {
+  id: number
+  mensaje: string
+  estado: RequestEstado
+  created_at: string
 }
 
 export interface BusinessRule {

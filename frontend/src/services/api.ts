@@ -142,6 +142,15 @@ export const quotationsApi = {
   getChangelog: (quotationId: number) =>
     http.get<ChangeLogEntry[]>(`/quotations/${quotationId}/changelog`).then((r) => r.data),
 
+  getRequests: (quotationId: number) =>
+    http.get<import('../types').QuotationRequest[]>(`/quotations/${quotationId}/requests`).then((r) => r.data),
+
+  createRequest: (quotationId: number, mensaje: string) =>
+    http.post(`/quotations/${quotationId}/requests`, { mensaje }).then((r) => r.data),
+
+  updateRequest: (requestId: number, estado: 'en_revision' | 'resuelto') =>
+    http.patch(`/quotations/requests/${requestId}`, { estado }).then((r) => r.data),
+
   downloadPdf: async (id: number, version: 'ejecutivo' | 'cliente' = 'ejecutivo'): Promise<void> => {
     const response = await http.get(`/quotations/${id}/pdf?version=${version}`, {
       responseType: 'blob',

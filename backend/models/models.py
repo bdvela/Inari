@@ -187,6 +187,7 @@ class Quotation(Base, TimestampMixin):
     )
     logs: Mapped[list["OptimizationLog"]] = relationship("OptimizationLog", back_populates="cotizacion")
     change_logs: Mapped[list["QuotationChangeLog"]] = relationship("QuotationChangeLog", back_populates="cotizacion", order_by="QuotationChangeLog.created_at")
+    requests:    Mapped[list["QuotationRequest"]]   = relationship("QuotationRequest", back_populates="cotizacion", order_by="QuotationRequest.created_at")
 
 
 # ---------------------------------------------------------------------------
@@ -281,3 +282,20 @@ class QuotationChangeLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     cotizacion: Mapped[Quotation] = relationship("Quotation", back_populates="change_logs")
+
+
+# ---------------------------------------------------------------------------
+# Solicitudes de ajuste del cliente
+# ---------------------------------------------------------------------------
+class QuotationRequest(Base):
+    __tablename__ = "quotation_requests"
+
+    id:           Mapped[int]      = mapped_column(Integer, primary_key=True, index=True)
+    quotation_id: Mapped[int]      = mapped_column(ForeignKey("quotations.id"), nullable=False)
+    cliente_id:   Mapped[int]      = mapped_column(ForeignKey("users.id"), nullable=False)
+    mensaje:      Mapped[str]      = mapped_column(Text, nullable=False)
+    estado:       Mapped[str]      = mapped_column(String(20), nullable=False, default="pendiente")
+    created_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    cotizacion: Mapped[Quotation] = relationship("Quotation", back_populates="requests")
+    cliente:    Mapped[User]      = relationship("User")
