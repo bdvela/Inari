@@ -67,6 +67,9 @@ export interface Quotation {
   image_inferred_services: string[]
   imagenes_referencia: { url: string; nombre: string }[]
   detalles: QuotationDetail[]
+  // Metadatos del optimizador (presentes si el backend los incluye)
+  algorithm_used?: string | null
+  execution_ms?: number | null
 }
 
 export interface QuotationPairItem {
@@ -121,6 +124,7 @@ export interface Provider {
   indice_calidad: number
   tipos_evento_compatibles: string[]
   is_active: boolean
+  tier: 'basico' | 'premium'
 }
 
 export interface QuotationSummary {

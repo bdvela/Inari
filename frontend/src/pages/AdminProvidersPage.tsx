@@ -1,15 +1,34 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  PlusCircle, Pencil, Trash2, X, Check, AlertCircle, Loader2, Package,
+  PlusCircle, Pencil, Trash2, X, Check, AlertCircle, Loader2, Package, Star,
 } from 'lucide-react'
 import { providersApi, rulesApi } from '../services/api'
 import type { Provider, ServiceOption } from '../types'
+
+const TIERS: { value: 'basico' | 'premium'; label: string }[] = [
+  { value: 'basico',  label: 'Básico'  },
+  { value: 'premium', label: 'Premium' },
+]
 
 const EVENT_TYPES  = ['boda', 'corporativo', 'cumpleanos', 'quinceanos', 'conferencia', 'otro']
 const EVENT_LABELS: Record<string, string> = {
   boda: 'Boda', corporativo: 'Corporativo', cumpleanos: 'Cumpleaños',
   quinceanos: 'Quinceañera', conferencia: 'Conferencia', otro: 'Otro',
+}
+
+function TierBadge({ tier }: { tier: 'basico' | 'premium' }) {
+  if (tier === 'premium') {
+    return (
+      <span
+        className="badge flex items-center gap-1 text-[10px] font-semibold"
+        style={{ background: 'rgba(255,149,0,0.12)', color: '#a85d00', border: '1px solid rgba(255,149,0,0.28)' }}
+      >
+        <Star size={9} /> Premium
+      </span>
+    )
+  }
+  return <span className="badge badge-neutral text-[10px]">Básico</span>
 }
 
 function QualityBar({ value }: { value: number }) {
@@ -40,6 +59,7 @@ function ProviderForm({
     costo_base: initial?.costo_base ?? 0,
     indice_calidad: initial?.indice_calidad ?? 0.5,
     tipos_evento_compatibles: initial?.tipos_evento_compatibles ?? [],
+    tier: (initial?.tier ?? 'basico') as 'basico' | 'premium',
   })
 
   const toggleEvent = (et: string) => {
@@ -98,6 +118,19 @@ function ProviderForm({
             onChange={(e) => setForm((f) => ({ ...f, indice_calidad: parseFloat(e.target.value) }))}
           />
         </div>
+        <div>
+          <label className="label">Nivel</label>
+          <select
+            data-testid="tier-select"
+            className="input-field"
+            value={form.tier}
+            onChange={(e) => setForm((f) => ({ ...f, tier: e.target.value as 'basico' | 'premium' }))}
+          >
+            {TIERS.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div>
@@ -142,6 +175,7 @@ export default function AdminProvidersPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [mutationError, setMutationError] = useState<string | null>(null)
+  const [tierFilter, setTierFilter] = useState<'all' | 'basico' | 'premium'>('all')
 
   const { data: providers = [], isLoading } = useQuery({
     queryKey: ['providers'],
@@ -155,6 +189,10 @@ export default function AdminProvidersPage() {
 
   const serviceNameById = (id: number) =>
     services.find(s => s.id === id)?.nombre ?? `#${id}`
+
+  const filteredProviders = tierFilter === 'all'
+    ? providers
+    : providers.filter(p => p.tier === tierFilter)
 
   const createMutation = useMutation({
     mutationFn: providersApi.create,
@@ -264,14 +302,28 @@ export default function AdminProvidersPage() {
       {/* Table */}
       {!isLoading && providers.length > 0 && (
         <div className="card p-0 overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-4">
             <h3 className="font-display text-lg text-text-primary">Catálogo de proveedores</h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-muted">Filtrar nivel:</span>
+              <select
+                data-testid="tier-filter"
+                className="text-xs border border-border rounded-lg px-2.5 py-1.5 bg-bg text-text-secondary focus:outline-none focus:border-accent"
+                value={tierFilter}
+                onChange={e => setTierFilter(e.target.value as typeof tierFilter)}
+              >
+                <option value="all">Todos</option>
+                <option value="basico">Básico</option>
+                <option value="premium">Premium</option>
+              </select>
+            </div>
           </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-bg/80 border-b border-border">
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest text-text-secondary font-semibold">Proveedor</th>
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest text-text-secondary font-semibold">Servicio</th>
+                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest text-text-secondary font-semibold">Nivel</th>
                 <th className="text-right px-5 py-3 text-[10px] uppercase tracking-widest text-text-secondary font-semibold">Costo base</th>
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest text-text-secondary font-semibold">Calidad</th>
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest text-text-secondary font-semibold">Eventos</th>
@@ -280,10 +332,10 @@ export default function AdminProvidersPage() {
               </tr>
             </thead>
             <tbody>
-              {providers.map((p) => (
+              {filteredProviders.map((p) => (
                 <tr key={p.id} className="border-b border-border last:border-0 hover:bg-accent-light transition-colors duration-150 group">
                   {editingId === p.id ? (
-                    <td colSpan={7} className="px-5 py-4">
+                    <td colSpan={8} className="px-5 py-4">
                       <ProviderForm
                         initial={p}
                         onSave={(data) => updateMutation.mutate({ id: p.id, data })}
@@ -299,6 +351,9 @@ export default function AdminProvidersPage() {
                         <span className="badge bg-surface-raised text-text-secondary border border-border">
                           {serviceNameById(p.servicio_id)}
                         </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <TierBadge tier={p.tier ?? 'basico'} />
                       </td>
                       <td className="px-5 py-4 text-right font-semibold text-text-primary tabular-nums">
                         S/ {p.costo_base.toLocaleString('es-PE', { minimumFractionDigits: 0 })}

@@ -17,6 +17,8 @@ class ProviderOption(BaseModel):
     quality_index: float = Field(..., ge=0.0, le=1.0)
     tipos_evento_compatibles: list[str]
     fechas_no_disponibles: list[str]  # ISO "YYYY-MM-DD"
+    # Segmento: "basico" = solo cotización básica; "premium" = elegible para ambas
+    tier: str = "basico"
 
 
 class OptimizationInput(BaseModel):

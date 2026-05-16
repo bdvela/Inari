@@ -22,6 +22,7 @@ class ProviderCreate(BaseModel):
     experiencia_en_tipo_evento: float = Field(0.5, ge=0.0, le=1.0)
     tipos_evento_compatibles: list[str]
     fechas_no_disponibles: list[str] = []
+    tier: str = Field(default="basico", pattern="^(basico|premium)$")
 
 
 class ProviderUpdate(BaseModel):
@@ -31,6 +32,7 @@ class ProviderUpdate(BaseModel):
     tipos_evento_compatibles: list[str] | None = None
     fechas_no_disponibles: list[str] | None = None
     is_active: bool | None = None
+    tier: str | None = Field(default=None, pattern="^(basico|premium)$")
 
 
 @router.get("/")
@@ -49,6 +51,7 @@ async def list_providers(
             "indice_calidad": p.indice_calidad,
             "tipos_evento_compatibles": p.tipos_evento_compatibles,
             "is_active": p.is_active,
+            "tier": p.tier,
         }
         for p in providers
     ]
