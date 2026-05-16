@@ -12,7 +12,7 @@ import {
   Download, CheckCircle, XCircle, Loader2, RefreshCw,
   ChevronDown, ChevronUp, AlertCircle, TrendingDown,
   Minus, History, ChevronRight, ArrowRight, Sparkles,
-  Star, LockKeyhole, Package, TriangleAlert, MessageSquare, Send,
+  Star, LockKeyhole, Package, TriangleAlert, MessageSquare, Send, Link2, Copy,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { quotationsApi } from '../services/api'
@@ -636,6 +636,8 @@ export default function QuotationResultPage() {
   const [pdfLoading, setPdfLoading]       = useState<'ejecutivo' | 'cliente' | null>(null)
   const [clientNivel, setClientNivel]     = useState<'basico' | 'premium' | null>(null)
   const [clientLightbox, setClientLightbox] = useState<number | null>(null)
+  const [approving, setApproving]         = useState(false)
+  const [approveResult, setApproveResult] = useState<{ client_url: string; expires_at: string } | null>(null)
 
   const { data: quotation, isLoading, error } = useQuery({
     queryKey: ['quotation', id],
@@ -1171,9 +1173,30 @@ export default function QuotationResultPage() {
           <button className="btn btn-secondary btn-sm" onClick={() => setShowReprocess(!showReprocess)}>
             <RefreshCw size={14} /> Ajustar
           </button>
+          {isComplete && canSeeProviders && (
+            <button
+              data-testid="approve-btn"
+              className="btn btn-primary btn-sm"
+              disabled={approving}
+              onClick={async () => {
+                setApproving(true)
+                try {
+                  const res = await quotationsApi.approveAndShare(Number(id))
+                  setApproveResult({ client_url: res.client_url, expires_at: res.expires_at })
+                  toast.success('Enlace generado')
+                } catch {
+                  toast.error('No se pudo generar el enlace')
+                } finally {
+                  setApproving(false)
+                }
+              }}
+            >
+              {approving ? <><Loader2 size={13} className="animate-spin" /> Generando enlace...</> : <><Link2 size={14} /> Aprobar y enviar al cliente</>}
+            </button>
+          )}
           {isComplete && (
             <button
-              className="btn btn-primary btn-sm"
+              className="btn btn-secondary btn-sm"
               onClick={() => handleDownloadPdf(canSeeProviders ? 'ejecutivo' : 'cliente')}
               disabled={!!pdfLoading}
             >
@@ -1241,6 +1264,7 @@ export default function QuotationResultPage() {
               { l: 'Proveedores', v: String(quotation.detalles?.length ?? '—'), m: 'seleccionados' },
               { l: 'Calidad',     v: quotation.quality_score != null ? `${(quotation.quality_score*100).toFixed(0)}%` : '—', m: 'promedio' },
               { l: 'Total',       v: quotation.costo_total != null ? `S/${(quotation.costo_total/1000).toFixed(1)}k` : '—', m: 'IGV incluido', mono: true },
+              ...(quotation.algorithm_used ? [{ l: 'Algoritmo', v: quotation.algorithm_used, m: quotation.execution_ms != null ? `${quotation.execution_ms} ms` : 'optimización' }] : []),
             ].map(s => (
               <div key={s.l}>
                 <div className="text-[11px] text-text-muted uppercase tracking-wide mb-1">{s.l}</div>
@@ -1680,6 +1704,41 @@ export default function QuotationResultPage() {
                 : <><Download size={16} /> Descargar propuesta en PDF</>}
             </button>
           )}
+        </div>
+      )}
+
+      {/* ── Modal: enlace de cliente generado ── */}
+      {approveResult && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          className="flex items-center justify-center p-4"
+          onClick={() => setApproveResult(null)}
+        >
+          <div
+            className="glass-raised rounded-2xl p-8 max-w-md w-full animate-slide-up"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-ok/15 flex items-center justify-center">
+                <CheckCircle size={20} className="text-ok" />
+              </div>
+              <div>
+                <h3 className="font-display text-xl font-bold">Enlace generado</h3>
+                <p className="text-xs text-text-secondary">Válido hasta {new Date(approveResult.expires_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+              </div>
+            </div>
+            <p className="text-sm text-text-secondary mb-4">Comparte este enlace con el cliente. No necesita iniciar sesión para verlo.</p>
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-black/5 border border-border mb-5">
+              <span className="text-xs font-mono text-text-primary flex-1 truncate">{approveResult.client_url}</span>
+              <button
+                className="btn btn-secondary btn-sm shrink-0"
+                onClick={() => { navigator.clipboard.writeText(approveResult.client_url); toast.success('Copiado') }}
+              >
+                <Copy size={13} /> Copiar
+              </button>
+            </div>
+            <button className="btn btn-ghost w-full" onClick={() => setApproveResult(null)}>Cerrar</button>
+          </div>
         </div>
       )}
 

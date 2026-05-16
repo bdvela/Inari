@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   LogOut, LayoutDashboard, PlusCircle, ShieldCheck,
-  Users, Package, Menu, X,
+  Users, Package, Menu, X, Sliders, FileJson,
 } from 'lucide-react'
 
 function getInitials(nombre: string | null): string {
@@ -109,6 +109,12 @@ export default function Layout() {
               </NavLink>
               <NavLink to="/admin/packages" style={({ isActive }) => navItemStyle(isActive)}>
                 {({ isActive }) => (<><Package size={17} style={iconStyle(isActive)} /> Paquetes</>)}
+              </NavLink>
+              <NavLink to="/admin/system-config" style={({ isActive }) => navItemStyle(isActive)}>
+                {({ isActive }) => (<><Sliders size={17} style={iconStyle(isActive)} /> Sistema</>)}
+              </NavLink>
+              <NavLink to="/admin/optimization-logs" style={({ isActive }) => navItemStyle(isActive)}>
+                {({ isActive }) => (<><FileJson size={17} style={iconStyle(isActive)} /> Logs optimizer</>)}
               </NavLink>
             </>
           )}
