@@ -4,6 +4,123 @@ Fecha: 2026-04-28. Referencia: STATUS.md generado en misma sesión.
 
 ---
 
+## v2.3 — Redesign completo (2026-05-16)
+
+Branch: `v2.3-redesign`. Tests: **292 backend PASS · 9 frontend PASS · 0 TypeScript errors**. Cobertura optimizer: 94%.
+
+### HU implementadas
+
+| ID | Título | Estado |
+|---|---|---|
+| HU-C01 | Página pública /p/:token sin login | ✅ COMPLETO |
+| HU-C02 | PDF descargable desde link firmado | ✅ COMPLETO |
+| HU-C03 | Solicitudes de ajuste desde link público | ✅ COMPLETO |
+| HU-E01 | Aprobar cotización y generar link único | ✅ COMPLETO |
+| HU-E02 | Generación dual básico/premium con tier proveedor | ✅ COMPLETO |
+| HU-E03 | Vista de par básico/premium + botón aprobar | ✅ COMPLETO |
+| HU-A01 | Configuración quality_weight desde UI admin | ✅ COMPLETO |
+| HU-A02 | Inspección de logs del optimizer | ✅ COMPLETO |
+| HU-A03 | Panel admin con campo tier en proveedores | ✅ COMPLETO |
+| HU-T01 | Chat conversacional para iniciar cotización | ✅ COMPLETO |
+| HU-T02 | Eliminación flujo guest (wizard público) | ✅ COMPLETO |
+| HU-SEC | Tokens JWT firmados para cliente (sin sesión) | ✅ COMPLETO |
+| HU-DEP | Documentación endpoints deprecated | ✅ COMPLETO |
+
+### Nuevos archivos backend
+
+**Módulos:**
+- `backend/modules/auth/__init__.py`
+- `backend/modules/auth/client_tokens.py` — `create_client_token`, `verify_client_token`, `jti` único
+- `backend/modules/assistant/__init__.py`
+- `backend/modules/assistant/chat_orchestrator.py` — `start_session`, `process_message`, `confirm_session`, `expire_sessions`
+
+**Routers:**
+- `backend/api/routers/public.py` — `GET/POST /public/quotations/by-token` y sub-endpoints
+- `backend/api/routers/chat.py` — `POST /chat/start`, `/{id}/message`, `/{id}/confirm`
+- `backend/api/routers/admin.py` — optimizer-config + optimization-logs
+
+**Modelos:**
+- `backend/models/chat_session.py` — `ChatSession` (UUID PK, messages JSON, extracted_params)
+- `backend/models/system_config.py` — `SystemConfig` (key-value para parámetros del sistema)
+
+**Core:**
+- `backend/core/config_service.py` — `get_quality_weight`, `set_quality_weight`
+
+**Schemas:**
+- `backend/api/schemas/public_quotation.py` — schemas públicos sin datos sensibles
+- `backend/api/schemas/quotation.py` — `QuotationLevelEnum`, `DualGenerationResponse`
+
+**Migraciones:**
+- `f0a1b2c3d4e5_add_chat_sessions.py` — tabla `chat_sessions`
+- `a1b2c3d4e5f0_add_provider_tier.py` — columna `providers.tier` VARCHAR(10) DEFAULT 'basico'
+- `b1c2d3e4f5a6_add_system_config.py` — tabla `system_config` + seed quality_weight=1.0
+
+### Archivos backend modificados
+
+- `backend/models/models.py` — Provider +`tier`, QuotationStatus +`APROBADA_ENVIADA/CANCELADA/RECHAZADA`
+- `backend/modules/optimizer/schemas.py` — `ProviderOption` +`tier: str = "basico"`
+- `backend/modules/proposal_gen/generator.py` — `generate_proposals` +`all_providers` param (tier-aware)
+- `backend/api/routers/quotations.py` — tier filtering, quality_weight desde DB, `approve_and_share`, fix `r.estado.value` bug
+- `backend/api/routers/auth.py` — `register_and_quote` marcado `[DEPRECATED]` + bug descubierto (`UnboundLocalError: extra_optional`)
+- `backend/main.py` — registros de routers `public`, `chat`, `admin`
+- `alembic/env.py` — imports `chat_session`, `system_config` models
+- `tests/integration/conftest.py` — imports modelos nuevos para `create_all`
+
+### Nuevos tests
+
+**Integración (10 archivos, ~90 tests):**
+- `test_auth_regression.py` — contratos JWT, mismos mensajes 401, scope de roles
+- `test_approve_and_share.py` — flujo completo aprobación + tokens únicos (jti)
+- `test_public_quotation.py` — endpoint público, sin proveedor en response, 401/403
+- `test_public_pdf.py` — PDF/HTML sin proveedor, narrativa, condiciones de pago
+- `test_public_requests.py` — solicitudes de ajuste desde link, scope, validación 200-1000
+- `test_chat_endpoints.py` — flujo chat completo, 403, 410 expirado, 422 vacío
+- `test_dual_generation.py` — cotización dual por tier, logs, fallback
+- `test_admin_config.py` — quality_weight CRUD, rol ADMIN, integración optimizer
+- `test_optimization_logs_api.py` — paginación, filtros, 405 en DELETE/PATCH/PUT
+- `test_deprecated_endpoints.py` — documentación endpoints deprecated
+
+**Unitarios (2 archivos):**
+- `tests/unit/test_client_tokens.py` — 14 tests JWT (sin PII, jti, expiración, manipulación)
+- `tests/unit/test_chat_orchestrator.py` — 9 tests orquestador con parse_description mockeado
+
+### Nuevos archivos frontend
+
+**Páginas:**
+- `frontend/src/pages/ChatQuotationPage.tsx` — interfaz chat 2-col con panel parámetros en vivo
+- `frontend/src/pages/PublicQuotationPage.tsx` — vista pública /p/:token con historial + solicitudes
+- `frontend/src/pages/AdminSystemConfigPage.tsx` — slider quality_weight 0-5
+- `frontend/src/pages/AdminOptimizationLogsPage.tsx` — tabla paginada + modal JSON detail
+
+**Servicios:**
+- `frontend/src/services/publicApi.ts` — endpoints públicos sin auth interceptor
+- `frontend/src/services/chatApi.ts` — chat endpoints con auth
+
+**Tests:**
+- `frontend/src/test-setup.ts` — setup vitest + @testing-library/jest-dom
+- `frontend/src/pages/__tests__/QuotationResultPage.test.tsx` — 4 smoke tests
+- `frontend/src/pages/__tests__/AdminProvidersPage.test.tsx` — 5 smoke tests
+
+### Archivos frontend modificados
+
+- `frontend/src/App.tsx` — rutas `/p/:token`, `/quotations/new` → chat, `/admin/*` nuevas, redirect `/cotizar`→`/`
+- `frontend/src/components/shared/Layout.tsx` — menú "Sistema" + "Logs optimizer" para admin
+- `frontend/src/services/api.ts` — `http` exportado, `adminApi`, tipos nuevos
+- `frontend/src/types/index.ts` — `Provider.tier`, `Quotation.algorithm_used?`, `algorithm_used?`
+- `frontend/src/pages/AdminProvidersPage.tsx` — dropdown tier, badge TierBadge, filtro por tier
+- `frontend/src/pages/QuotationResultPage.tsx` — botón "Aprobar y enviar", modal URL cliente, chip algoritmo
+- `frontend/src/pages/LandingPage.tsx` — CTAs `/cotizar` → WhatsApp/Instagram, sección Contáctanos
+- `frontend/src/pages/RegisterPage.tsx` — aviso solo personal autorizado
+- `vite.config.ts` — configuración vitest (jsdom, globals, setupFiles)
+
+### Archivos eliminados
+
+- `frontend/src/pages/GuestWizardPage.tsx` — flujo guest reemplazado por chat
+- `frontend/src/pages/GuestResultPage.tsx` — flujo guest reemplazado por /p/:token
+- `frontend/src/components/RegisterWithQuotationModal.tsx` — modal guest eliminado
+
+---
+
 ## Sesión 14 — Solicitudes de ajuste cliente → ejecutivo (human-in-the-loop) (2026-05-07)
 
 Commit: `6a8bfd2`
