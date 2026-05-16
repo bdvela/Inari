@@ -20,6 +20,7 @@ def _make_proposal(
     costo_total: float = 8500.0,
     quality_score: float = 0.87,
     algorithm_used: str = "ILP",
+    show_providers: bool = True,
 ) -> Proposal:
     if items is None:
         items = [
@@ -59,6 +60,7 @@ def _make_proposal(
         algorithm_used=algorithm_used,
         generated_at=datetime(2026, 4, 28, 10, 30, tzinfo=timezone.utc),
         version=1,
+        show_providers=show_providers,
     )
 
 
@@ -127,11 +129,11 @@ class TestProposalTemplate:
         assert "Sin Calificación" in html
 
     def test_renders_without_estilo(self):
-        """Propuesta sin estilo definido usa texto por defecto ('Por definir')."""
+        """Propuesta sin estilo definido usa texto por defecto ('A definir')."""
         proposal = _make_proposal()
         proposal = proposal.model_copy(update={"estilo": None})
         html = self._render(proposal)
-        assert "Por definir" in html
+        assert "A definir" in html
 
     def test_shows_total_cost_formatted(self):
         """Costo total aparece en el HTML (puede estar formateado con separadores)."""

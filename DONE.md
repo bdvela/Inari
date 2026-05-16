@@ -4,6 +4,129 @@ Fecha: 2026-04-28. Referencia: STATUS.md generado en misma sesión.
 
 ---
 
+## Sesión 14 — Solicitudes de ajuste cliente → ejecutivo (human-in-the-loop) (2026-05-07)
+
+Commit: `6a8bfd2`
+
+### Modelo y migración
+- `QuotationRequest` en `backend/models/models.py` — id, cotizacion_id, cliente_id, mensaje, estado (VARCHAR: pendiente/en_revision/resuelta), created_at
+- Migración `e2f5a8b3c1d7_add_quotation_requests.py` — tabla `quotation_requests`
+- `core/database.py`: `create_all` con `checkfirst=True`
+- `Quotation.requests` relationship con `order_by=created_at`
+
+### Endpoints
+- `POST /quotations/{id}/requests` — cliente crea solicitud de ajuste (mensaje libre)
+- `GET /quotations/{id}/requests` — lista solicitudes de una cotización (client/ejecutivo/admin)
+- `PATCH /quotations/requests/{request_id}` — ejecutivo/admin actualiza estado (en_revision/resuelta)
+- `GET /quotations/` — ahora retorna `pending_requests` (count int) en cada item para staff
+
+### Frontend
+- Vista cliente en `QuotationResultPage`: widget "Solicitar ajuste" inline — textarea, botón submit, confirmación, estado de solicitud activa
+- Vista ejecutivo en `QuotationResultPage`: panel de solicitudes con botones "En revisión" / "Resuelta"
+- Dashboard staff (`DashboardPage`): badge naranja en filas con solicitudes pendientes
+- `services/api.ts`: funciones `createRequest`, `getRequests`, `updateRequest`
+- `types/index.ts`: interfaz `QuotationRequest` con campos estado
+
+### Tests
+- 196 pasando, 4 fallos en `test_generator.py` (template PDF renovado, tests desactualizados — deuda técnica)
+
+---
+
+## Sesión 13 — Vista cotización cliente 2-col desktop + dashboard responsive (2026-05-07)
+
+Commit: `b8c8104`
+
+### Frontend
+- `QuotationResultPage`: layout 2 columnas en desktop (left: hero/métricas/servicios, right sticky: análisis IA/toggle nivel/narrativa/PDF). Mobile: single-column sin cambios.
+- `Layout`: sidebar drawer mobile con hamburger, backdrop, auto-close on navigate
+- `DashboardPage` cliente: cards agrupadas por evento (básica + premium en misma card), toggle card/lista, métricas sin jerga interna ("Propuestas activas", no "Cotizaciones")
+
+---
+
+## Sesión 12 — UX completo: paneles por rol, flujo guest, landing redesign (2026-05-07)
+
+Commit: `750decd`
+
+### Dashboard cliente
+- Cards agrupadas por evento (básica/premium juntas), toggle card/lista
+- Responsive: columnas colapsables en mobile
+- Métricas útiles: presupuesto promedio, eventos este mes
+
+### Sidebar / Layout
+- Responsive con drawer mobile + hamburger menu
+- Menú diferenciado por rol: cliente (Dashboard/Nueva/Ajustes), staff (+ Reglas/Paquetes/Proveedores)
+
+### Flujo guest completo
+- `GuestWizardPage` → llama `POST /quotations/preview` → muestra resultado en `GuestResultPage`
+- Registro/login in-page (`RegisterWithQuotationModal`) preservando resultados de preview
+- Opciones: registrarse con cotización guardada, solo ver resultado, solo registrarse
+
+### Auth nuevos endpoints
+- `GET /auth/me` — perfil del usuario autenticado
+- `PATCH /auth/me` — editar nombre
+- `POST /auth/me/change-password` — cambiar contraseña (valida password actual)
+
+### Backend
+- `evento_fecha` incluido en listado `GET /quotations/`
+- `POST /quotations/parse-description` ahora acepta requests sin auth (útil para guest wizard)
+
+### Landing page
+- Rediseño completo con fotos, animaciones scroll, contador stats (eventos, clientes, etc.)
+
+### Register
+- Rediseño visual alineado con LoginPage
+
+---
+
+## Sesión 11 — Paneles por rol, PDF 3-páginas, cotización sin registro (2026-05-07)
+
+Commit: `6f1d61e`
+
+### Paneles diferenciados por rol
+- Layout menú lateral: cliente (Dashboard/Nueva), ejecutivo (Dashboard/Nueva/Reglas/Paquetes), admin (Proveedores/Reglas/Paquetes)
+- Dashboard cliente: subtítulo "Mis eventos y propuestas", empty state con CTA "Crear mi primera cotización"
+- 403 cross-client: intento de ver cotización ajena → redirect con mensaje claro
+- Bloque "Datos del cliente" en `NewQuotationPage` wizard — visible solo para ejecutivo (nombre + DNI)
+- Modal confirmación en delete de reglas y paquetes
+
+### Historial de cambios de cotización
+- Modelo `QuotationChangeLog` + migración `d1e4f7a2c8b0`
+- Log automático en: crear cotización, reproceso, swap de proveedor
+- `GET /quotations/{id}/changelog` — endpoint para leer logs
+- Panel colapsable en `QuotationResultPage` (solo ejecutivo/admin)
+
+### PDF mejorado — 3 páginas
+- Página 1: portada oscura (#1A1714) con logo INARI GROUP, tipo evento, cliente, fecha
+- Página 2: servicios en cards con índice de calidad visual
+- Página 3: resumen inversión + términos y condiciones + firma del cliente
+- **Versión cliente** (sin nombres de proveedores) y **versión ejecutivo** (con proveedores)
+- Botones diferenciados en UI: "PDF interno" / "PDF para cliente"
+- Loaders en botones de descarga
+- Narrativa: 80 palabras máx, sin markdown, sin nombres de proveedores
+
+### Imágenes de referencia
+- `style_images` se guardan en storage y crean `ReferenceImage` en BD al generar cotización
+- `STORAGE_BASE_URL` corregido a `localhost:8000` por default
+- Lightbox fullscreen con portal en `QuotationResultPage` (navegación ←→, Esc)
+
+### Cotización sin registro (HU nueva)
+- `GET /cotizar` → `GuestWizardPage` (público, sin sidebar)
+- `POST /quotations/preview` — pipeline completo (análisis visual + reglas + optimizer + propuesta) sin guardar en BD
+- `POST /auth/register-and-quote` — crea cuenta + cotización guardada en un paso
+- `GuestWizardPage.tsx`, `GuestResultPage.tsx`, `RegisterWithQuotationModal.tsx`
+- Landing CTAs apuntan a `/cotizar`
+
+### Specs nuevas
+- `specs/HU-panel-cliente.md`
+- `specs/HU-panel-ejecutivo.md`
+- `specs/HU-panel-admin.md`
+- `specs/HU-cotizacion-sin-registro.md`
+
+### Tipografía
+- Cormorant Garamond reemplaza Syne/Playfair Display en headings (más elegante para eventos)
+
+---
+
 ## Sesión 10 — HU inferencia servicios desde imágenes (2026-05-06)
 
 ### Spec
