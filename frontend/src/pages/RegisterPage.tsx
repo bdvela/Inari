@@ -54,20 +54,20 @@ export default function RegisterPage() {
             fontWeight: 600, letterSpacing: '0.16em',
             textTransform: 'uppercase', marginBottom: 22,
           }}>
-            — Empieza gratis
+            — Panel de equipo
           </div>
           <h1 style={{
             fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 800,
             fontSize: 72, lineHeight: 0.98,
             margin: 0, color: '#F2EFE9', letterSpacing: '-0.035em',
           }}>
-            Tu evento,<br/><span className="text-gradient">perfecto.</span>
+            INARI<br/><span className="text-gradient">GROUP.</span>
           </h1>
           <p style={{
             marginTop: 26, fontSize: 16, lineHeight: 1.6,
             color: 'rgba(242,239,233,0.65)', maxWidth: 420,
           }}>
-            Genera cotizaciones personalizadas con inteligencia artificial. Básica y premium en menos de 3 minutos.
+            Plataforma interna para gestión de cotizaciones y proveedores. Acceso restringido a personal autorizado.
           </p>
         </div>
 
@@ -95,14 +95,18 @@ export default function RegisterPage() {
           </div>
 
           <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#E8572A', letterSpacing: '0.14em', marginBottom: 14 }}>
-            NUEVA CUENTA
+            ACCESO PERSONAL AUTORIZADO
           </div>
           <h2 style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 34, fontWeight: 700, margin: 0, letterSpacing: '-0.025em', lineHeight: 1.05, color: '#1D1D1F' }}>
-            Crea tu cuenta.
+            Registro de personal.
           </h2>
-          <p style={{ marginTop: 10, marginBottom: 28, fontSize: 14, color: '#6E6E73' }}>
-            Completa tus datos para empezar.
+          <p style={{ marginTop: 10, marginBottom: 20, fontSize: 14, color: '#6E6E73' }}>
+            El registro está disponible solo para personal autorizado de INARI GROUP.
           </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(232,87,42,0.06)', border: '1px solid rgba(232,87,42,0.18)', borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontSize: 13, color: '#C94A1F' }}>
+            <AlertCircle size={14} style={{ flexShrink: 0 }} />
+            Solo ejecutivos y administradores pueden crear cuentas.
+          </div>
 
           <form onSubmit={handleSubmit(onSubmit)}>
             <div style={{ marginBottom: 16 }}>

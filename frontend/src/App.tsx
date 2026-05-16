@@ -6,12 +6,14 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import NewQuotationPage from './pages/NewQuotationPage'
+import ChatQuotationPage from './pages/ChatQuotationPage'
 import QuotationResultPage from './pages/QuotationResultPage'
 import AdminProvidersPage from './pages/AdminProvidersPage'
 import AdminRulesPage from './pages/AdminRulesPage'
 import AdminPackagesPage from './pages/AdminPackagesPage'
-import GuestWizardPage from './pages/GuestWizardPage'
-import GuestResultPage from './pages/GuestResultPage'
+import AdminSystemConfigPage from './pages/AdminSystemConfigPage'
+import AdminOptimizationLogsPage from './pages/AdminOptimizationLogsPage'
+import PublicQuotationPage from './pages/PublicQuotationPage'
 import Layout from './components/shared/Layout'
 
 function ProtectedRoute({ children, requiredRole }: {
@@ -47,17 +49,17 @@ export default function App() {
           path="/register"
           element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
         />
-        {/* Guest quotation flow — public, no sidebar */}
-        <Route
-          path="/cotizar"
-          element={isAuthenticated ? <Navigate to="/quotations/new" replace /> : <GuestWizardPage />}
-        />
-        <Route path="/propuesta" element={<GuestResultPage />} />
+        {/* Legacy guest routes — redirected to landing */}
+        <Route path="/cotizar" element={<Navigate to="/" replace />} />
+        <Route path="/propuesta" element={<Navigate to="/" replace />} />
+        {/* Client proposal link — public, no auth guard */}
+        <Route path="/p/:token" element={<PublicQuotationPage />} />
 
         {/* Protected — inside Layout */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<DashboardPage />} />
-<Route path="/quotations/new" element={<NewQuotationPage />} />
+          <Route path="/quotations/new" element={<ChatQuotationPage />} />
+          <Route path="/quotations/new/classic" element={<NewQuotationPage />} />
           <Route path="/quotations/:id" element={<QuotationResultPage />} />
           <Route
             path="/admin/providers"
@@ -80,6 +82,22 @@ export default function App() {
             element={
               <ProtectedRoute requiredRole="ejecutivo">
                 <AdminPackagesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/system-config"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminSystemConfigPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/optimization-logs"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminOptimizationLogsPage />
               </ProtectedRoute>
             }
           />

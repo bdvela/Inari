@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowRight, Heart, Briefcase, Mic, Users,
+  Heart, Briefcase, Mic, Users,
   MapPin, Zap, CheckCircle, Sparkles, Crown, Play,
+  MessageCircle, ExternalLink,
 } from 'lucide-react'
 
 /* ── Data ─────────────────────────────────────────────── */
@@ -120,9 +121,14 @@ export default function LandingPage() {
         </nav>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => navigate('/login')}>Ingresar</button>
-          <button className="btn btn-primary btn-sm" onClick={() => navigate('/cotizar')}>
-            Cotizar <ArrowRight size={14} />
-          </button>
+          <a
+            href="https://wa.me/51999999999?text=Hola%20INARI%20GROUP%2C%20me%20gustar%C3%ADa%20cotizar%20un%20evento"
+            target="_blank" rel="noopener noreferrer"
+            className="btn btn-primary btn-sm"
+            style={{ textDecoration: 'none' }}
+          >
+            <MessageCircle size={14} /> Contáctanos
+          </a>
         </div>
       </header>
 
@@ -145,11 +151,16 @@ export default function LandingPage() {
               Cotizamos, coordinamos y orquestamos cada detalle de tu evento con una red curada de 43 proveedores en Lima.
             </p>
             <div className="reveal reveal-d3" style={{ display: 'flex', gap: 12, marginTop: 36 }}>
-              <button className="btn btn-primary btn-lg" onClick={() => navigate('/cotizar')}>
-                Cotizar mi evento <ArrowRight size={16} />
-              </button>
+              <a
+                href="https://wa.me/51999999999?text=Hola%20INARI%20GROUP%2C%20quiero%20cotizar%20mi%20evento"
+                target="_blank" rel="noopener noreferrer"
+                className="btn btn-primary btn-lg"
+                style={{ textDecoration: 'none' }}
+              >
+                <MessageCircle size={16} /> Cotizar por WhatsApp
+              </a>
               <button className="btn btn-secondary btn-lg" onClick={() => navigate('/login')}>
-                <Play size={15} /> Ver demo
+                <Play size={15} /> Ingresar
               </button>
             </div>
             <div className="reveal reveal-d4" style={{ display: 'flex', gap: 24, marginTop: 36, alignItems: 'center' }}>
@@ -277,9 +288,14 @@ export default function LandingPage() {
           ))}
         </div>
         <div className="reveal" style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>
-          <button className="btn btn-ghost" onClick={() => navigate('/cotizar')}>
-            Ver todos los eventos <ArrowRight size={14} />
-          </button>
+          <a
+            href="https://instagram.com/inari.eventos"
+            target="_blank" rel="noopener noreferrer"
+            className="btn btn-ghost"
+            style={{ textDecoration: 'none' }}
+          >
+            <ExternalLink size={14} /> Ver más en @inari.eventos
+          </a>
         </div>
       </section>
 
@@ -381,19 +397,34 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Final CTA ── */}
-      <section style={{ padding: '80px 64px 80px', textAlign: 'center' }}>
+      {/* ── Contáctanos ── */}
+      <section id="contacto" style={{ padding: '80px 64px 80px', textAlign: 'center' }}>
         <div className="reveal">
           <h2 style={{ fontFamily: 'Bebas Neue, Impact, sans-serif', fontSize: 88, fontWeight: 800, margin: '0 auto', letterSpacing: '0.02em', lineHeight: 0.95, maxWidth: 920, color: '#1D1D1F' }}>
-            Tu próximo evento empieza con <span className="text-gradient">una frase</span>.
+            Tu próximo evento empieza con <span className="text-gradient">una conversación</span>.
           </h2>
           <p style={{ marginTop: 32, fontSize: 18, color: '#6E6E73', maxWidth: 520, margin: '32px auto 0' }}>
-            Cotización gratuita en menos de 60 segundos. Sin compromiso, sin formulario interminable.
+            Cuéntanos sobre tu evento. Nuestro equipo te responde en menos de 24 horas con una propuesta personalizada.
           </p>
-          <button className="btn btn-primary btn-lg" style={{ marginTop: 40, padding: '18px 40px', fontSize: 16 }} onClick={() => navigate('/cotizar')}>
-            Empezar mi cotización gratis <ArrowRight size={16} />
-          </button>
-          <div style={{ marginTop: 16, fontSize: 13, color: '#AEAEB2' }}>Sin tarjeta de crédito · Sin registro previo</div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 40, flexWrap: 'wrap' }}>
+            <a
+              href="https://wa.me/51999999999?text=Hola%20INARI%20GROUP%2C%20me%20gustar%C3%ADa%20cotizar%20un%20evento"
+              target="_blank" rel="noopener noreferrer"
+              className="btn btn-primary btn-lg"
+              style={{ textDecoration: 'none', padding: '18px 40px', fontSize: 16 }}
+            >
+              <MessageCircle size={18} /> WhatsApp · +51 999 999 999
+            </a>
+            <a
+              href="https://instagram.com/inari.eventos"
+              target="_blank" rel="noopener noreferrer"
+              className="btn btn-secondary btn-lg"
+              style={{ textDecoration: 'none', padding: '18px 40px', fontSize: 16 }}
+            >
+              <ExternalLink size={18} /> Instagram · @inari.eventos
+            </a>
+          </div>
+          <div style={{ marginTop: 20, fontSize: 13, color: '#AEAEB2' }}>Respondemos en menos de 24 horas · Sin compromiso</div>
         </div>
       </section>
 
@@ -411,7 +442,7 @@ export default function LandingPage() {
           <div style={{ display: 'flex', gap: 24, fontSize: 13, color: '#6E6E73', flexWrap: 'wrap' }}>
             <a href="#servicios" style={{ color: 'inherit', textDecoration: 'none' }}>Servicios</a>
             <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Privacidad</a>
-            <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Contacto</a>
+            <a href="#contacto" style={{ color: 'inherit', textDecoration: 'none' }}>Contacto</a>
             <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#AEAEB2' }}>© 2026</span>
           </div>
         </div>
