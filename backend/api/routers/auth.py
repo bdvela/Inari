@@ -109,8 +109,15 @@ async def register_and_quote(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Crea cuenta + genera cotización en un solo paso.
+    [DEPRECATED] Crea cuenta + genera cotización en un solo paso.
     Acepta multipart para incluir imágenes de referencia de estilo.
+
+    Reemplazado por: registro estándar (/auth/register) + flujo chat (/chat/*).
+    El modal RegisterWithQuotationModal y el flujo GuestWizardPage que consumían
+    este endpoint fueron eliminados en v2.3.
+    Este endpoint se mantiene temporalmente. Pendiente de eliminación en v2.4.
+
+    Callers activos conocidos: ninguno (frontend v2.3+).
     """
     from backend.models.models import BusinessRule, ReferenceImage
     from backend.modules.rules_engine.schemas import RuleDefinition

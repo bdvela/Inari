@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api.routers import auth, images, packages, providers, quotations, rules
+from backend.api.routers import admin, auth, chat, images, packages, providers, public, quotations, rules
 from backend.core.config import get_settings
 from backend.core.database import create_tables
 from backend.core.logging import setup_logging
@@ -45,6 +45,9 @@ app.include_router(providers.router, prefix="/api/v1")
 app.include_router(rules.router, prefix="/api/v1")
 app.include_router(packages.router, prefix="/api/v1")
 app.include_router(images.router, prefix="/api/v1")
+app.include_router(public.router, prefix="/api/v1")
+app.include_router(chat.router, prefix="/api/v1")
+app.include_router(admin.router, prefix="/api/v1")
 
 
 @app.get("/health")
