@@ -43,6 +43,9 @@ class QuotationStatus(str, enum.Enum):
     PROCESANDO = "procesando"
     COMPLETADO = "completado"
     ERROR = "error"
+    APROBADA_ENVIADA = "aprobada-enviada"
+    CANCELADA = "cancelada"
+    RECHAZADA = "rechazada"
 
 
 class EventType(str, enum.Enum):
@@ -149,6 +152,10 @@ class Provider(Base, TimestampMixin):
     # Fechas no disponibles (JSON array de strings ISO "YYYY-MM-DD")
     fechas_no_disponibles: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Segmento de proveedor: "basico" solo aplica a cotización básica, "premium" aplica a ambas
+    tier: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="basico", server_default="basico"
+    )
 
     servicio: Mapped[Service] = relationship("Service", back_populates="proveedores")
     detalles: Mapped[list["QuotationDetail"]] = relationship("QuotationDetail", back_populates="proveedor")

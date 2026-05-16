@@ -4,11 +4,11 @@ Los endpoints orquestan — no tienen lógica de negocio.
 Toda la lógica está en los módulos correspondientes.
 """
 import io
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy import func, select
@@ -49,6 +49,9 @@ from backend.modules.visual_analysis.service_inference import merge_inferred_ser
 from backend.modules.packages.selector import select_package
 from backend.modules.packages.schemas import ServicePackage as ServicePackageSvc
 from backend.modules.packages.exceptions import NoPackagesConfiguredError
+from backend.modules.auth.client_tokens import create_client_token
+from backend.core.config import get_settings
+from backend.core.config_service import get_quality_weight
 
 logger = get_logger("api.quotations")
 router = APIRouter(prefix="/quotations", tags=["Cotizaciones"])
@@ -143,7 +146,7 @@ async def generate_quotation(
 
     # Análisis de imágenes de estilo (si se enviaron) — determina quality_weight
     style_result = None
-    quality_weight = 1.0
+    quality_weight = await get_quality_weight(db)  # base desde system_config (admin ajustable)
     valid_images: list[tuple[bytes, str]] = []
     if style_images:
         valid_images = [
@@ -287,9 +290,15 @@ async def generate_quotation(
             quality_index=p.indice_calidad,
             tipos_evento_compatibles=p.tipos_evento_compatibles,
             fechas_no_disponibles=p.fechas_no_disponibles,
+            tier=p.tier,
         )
         for p in db_providers
     ]
+    # Run básico: solo proveedores tier='basico'
+    # Run premium: todos los tiers (calidad máxima disponible)
+    basico_options = [p for p in provider_options if p.tier == "basico"]
+    if not basico_options:
+        basico_options = provider_options  # fallback: todos si no hay ninguno basico
 
     # 4b. Selección automática de paquete propio según invitados
     package_cost = 0.0
@@ -376,7 +385,7 @@ async def generate_quotation(
         optional_services=rule_result.optional_services,
         event_type=evento_tipo,
         event_date=event_date,
-        providers=provider_options,
+        providers=basico_options,  # básico usa solo tier='basico'
         quality_weight=quality_weight,
     )
 
@@ -390,6 +399,7 @@ async def generate_quotation(
         estilo=estilo,
         cliente_nombre=current_user.nombre,
         version=version,
+        all_providers=provider_options,  # premium usa todos los tiers
     )
 
     # 7. Persistir detalles, logs y style_analysis
@@ -457,9 +467,14 @@ async def preview_quotation(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Genera cotización en memoria sin guardar en BD ni requerir autenticación.
-    Usado por el flujo de cotización para visitantes no registrados.
-    Retorna el resultado completo del optimizer para mostrarlo antes del registro.
+    [DEPRECATED] Genera cotización en memoria sin guardar en BD ni requerir autenticación.
+
+    Reemplazado por: flujo chat conversacional (/chat/*) + link firmado (/public/quotations/by-token).
+    El flujo GuestWizardPage que consumía este endpoint fue eliminado en v2.3.
+    Este endpoint se mantiene temporalmente para no romper integraciones externas pendientes
+    de migración. Pendiente de eliminación en v2.4.
+
+    Callers activos conocidos: ninguno (frontend v2.3+).
     """
     from datetime import date as date_type
     from backend.models.models import BusinessRule
@@ -469,7 +484,7 @@ async def preview_quotation(
 
     # Análisis de imágenes de estilo (opcional)
     style_result = None
-    quality_weight = 1.0
+    quality_weight = await get_quality_weight(db)  # base desde system_config
     if style_images:
         valid_images = [
             (await img.read(), img.filename or "ref.jpg")
@@ -534,6 +549,7 @@ async def preview_quotation(
             quality_index=p.indice_calidad,
             tipos_evento_compatibles=p.tipos_evento_compatibles,
             fechas_no_disponibles=p.fechas_no_disponibles,
+            tier=p.tier,
         )
         for p in db_providers
     ]
@@ -843,6 +859,7 @@ async def reprocess_quotation(
             quality_index=p.indice_calidad,
             tipos_evento_compatibles=p.tipos_evento_compatibles,
             fechas_no_disponibles=p.fechas_no_disponibles,
+            tier=p.tier,
         )
         for p in db_providers
     ]
@@ -1374,7 +1391,7 @@ async def get_requests(
         {
             "id": r.id,
             "mensaje": r.mensaje,
-            "estado": r.estado.value,
+            "estado": r.estado,
             "created_at": r.created_at,
         }
         for r in reqs
@@ -1401,3 +1418,55 @@ async def update_request(
     req.estado = new_estado
     await db.flush()
     return {"id": req.id, "estado": req.estado}
+
+
+# ---------------------------------------------------------------------------
+# CU-approve: aprobar cotización y emitir link de cliente
+# ---------------------------------------------------------------------------
+
+class ApproveAndShareRequest(BaseModel):
+    expires_in_days: int = Field(default=30, ge=1, le=90)
+
+
+class ApproveAndShareResponse(BaseModel):
+    quotation_id: int
+    client_url: str
+    client_token: str
+    expires_at: str
+    quotation_status: str
+
+
+@router.post("/{quotation_id}/approve-and-share", response_model=ApproveAndShareResponse)
+async def approve_and_share(
+    quotation_id: int,
+    body: ApproveAndShareRequest,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(UserRole.EJECUTIVO, UserRole.ADMIN)),
+):
+    result = await db.execute(select(Quotation).where(Quotation.id == quotation_id))
+    quotation = result.scalar_one_or_none()
+    if not quotation:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+
+    if quotation.estado in (QuotationStatus.CANCELADA, QuotationStatus.RECHAZADA):
+        raise HTTPException(
+            status_code=409,
+            detail="Cotización cancelada o rechazada no puede aprobarse",
+        )
+
+    token = create_client_token(quotation_id=quotation_id, expires_in_days=body.expires_in_days)
+    quotation.estado = QuotationStatus.APROBADA_ENVIADA
+
+    now = datetime.now(timezone.utc)
+    expires_at = (now + timedelta(days=body.expires_in_days)).isoformat()
+
+    await db.flush()
+
+    client_url = f"{get_settings().FRONTEND_BASE_URL}/p/{token}"
+    return ApproveAndShareResponse(
+        quotation_id=quotation_id,
+        client_url=client_url,
+        client_token=token,
+        expires_at=expires_at,
+        quotation_status=quotation.estado.value,
+    )

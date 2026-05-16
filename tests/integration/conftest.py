@@ -18,6 +18,8 @@ from backend.main import app
 
 # Fuerza carga de todos los modelos en metadata antes de create_all
 from backend.models import models  # noqa: F401
+import backend.models.chat_session  # noqa: F401
+import backend.models.system_config  # noqa: F401
 
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 

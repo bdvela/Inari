@@ -28,9 +28,14 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = ""
     SUPABASE_KEY: str = ""
 
-    # Seguridad
+    # Frontend
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+
+    # Seguridad — staff JWT
     SECRET_KEY: str = "cambiar-en-produccion"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 8  # 8 horas
+    # Seguridad — tokens firmados de cliente (self-contained, sin BD)
+    CLIENT_TOKEN_SECRET: str = "client-secret-cambiar-en-produccion"
 
     # Optimizador — pesos del índice de calidad (deben sumar 1.0)
     QUALITY_WEIGHT_HISTORICAL: float = 0.5
