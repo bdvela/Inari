@@ -23,7 +23,7 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
 
-const http = axios.create({ baseURL: API_BASE })
+export const http = axios.create({ baseURL: API_BASE })
 
 // Inyectar token automáticamente si existe
 http.interceptors.request.use((config) => {
@@ -79,28 +79,6 @@ export const authApi = {
       basica_factible: boolean
       premium_factible: boolean
     }>('/auth/register-and-quote', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }).then((r) => r.data),
-}
-
-// Guest preview (sin auth)
-export const guestApi = {
-  preview: (formData: FormData) =>
-    http.post<{
-      basica: { nivel: string; factible: boolean; costo_total: number; quality_score: number; detalles: Array<{ servicio: string; costo: number; es_obligatorio: boolean; quality_index: number }> }
-      premium: { nivel: string; factible: boolean; costo_total: number; quality_score: number; detalles: Array<{ servicio: string; costo: number; es_obligatorio: boolean; quality_index: number }> }
-      basica_factible: boolean
-      premium_factible: boolean
-      num_invitados: number
-      evento_tipo: string
-      evento_fecha: string
-      presupuesto_maximo: number
-      estilo: string | null
-      descripcion: string | null
-      image_inferred_services: string[]
-      style_detected: Record<string, unknown> | null
-      package_selected: Record<string, unknown> | null
-    }>('/quotations/preview', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then((r) => r.data),
 }
@@ -169,6 +147,17 @@ export const quotationsApi = {
 
     setTimeout(() => URL.revokeObjectURL(url), 5000)
   },
+
+  approveAndShare: (id: number, expiresInDays = 30) =>
+    http
+      .post<{
+        quotation_id: number
+        client_url: string
+        client_token: string
+        expires_at: string
+        quotation_status: string
+      }>(`/quotations/${id}/approve-and-share`, { expires_in_days: expiresInDays })
+      .then((r) => r.data),
 }
 
 // Reglas de negocio
@@ -220,4 +209,64 @@ export const providersApi = {
     http.put<{ id: number; nombre: string }>(`/providers/${id}`, data).then((r) => r.data),
 
   delete: (id: number) => http.delete(`/providers/${id}`),
+}
+
+// Admin — configuración del sistema
+export interface OptimizerConfig {
+  quality_weight: number
+  updated_at: string | null
+  updated_by_email: string | null
+}
+
+export interface OptimizationLogSummary {
+  id: number
+  cotizacion_id: number
+  algoritmo_usado: string
+  duracion_ms: number
+  es_factible: boolean
+  created_at: string
+}
+
+export interface OptimizationLogDetail extends OptimizationLogSummary {
+  input_json: Record<string, unknown>
+  output_json: Record<string, unknown>
+}
+
+export interface PaginatedLogs {
+  items: OptimizationLogSummary[]
+  total: number
+  page: number
+  page_size: number
+  pages: number
+}
+
+export interface LogFilters {
+  algoritmo?: string
+  fecha_desde?: string
+  fecha_hasta?: string
+  cotizacion_id?: number
+  page?: number
+  page_size?: number
+}
+
+export const adminApi = {
+  getOptimizerConfig: () =>
+    http.get<OptimizerConfig>('/admin/optimizer-config').then((r) => r.data),
+
+  updateOptimizerConfig: (quality_weight: number) =>
+    http.put<OptimizerConfig>('/admin/optimizer-config', { quality_weight }).then((r) => r.data),
+
+  getLogs: (filters: LogFilters = {}) => {
+    const params: Record<string, string | number> = {}
+    if (filters.algoritmo)     params.algoritmo     = filters.algoritmo
+    if (filters.fecha_desde)   params.fecha_desde   = filters.fecha_desde
+    if (filters.fecha_hasta)   params.fecha_hasta   = filters.fecha_hasta
+    if (filters.cotizacion_id) params.cotizacion_id = filters.cotizacion_id
+    if (filters.page)          params.page          = filters.page
+    if (filters.page_size)     params.page_size     = filters.page_size
+    return http.get<PaginatedLogs>('/admin/optimization-logs', { params }).then((r) => r.data)
+  },
+
+  getLogDetail: (logId: number) =>
+    http.get<OptimizationLogDetail>(`/admin/optimization-logs/${logId}`).then((r) => r.data),
 }

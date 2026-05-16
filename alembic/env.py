@@ -22,6 +22,8 @@ from backend.core.database import Base
 
 # Importar todos los modelos para que Alembic los detecte en autogenerate
 import backend.models.models  # noqa: F401
+import backend.models.chat_session  # noqa: F401
+import backend.models.system_config  # noqa: F401
 
 config = context.config
 
